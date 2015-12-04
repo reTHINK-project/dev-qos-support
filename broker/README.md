@@ -7,7 +7,7 @@ The repository for the Broker to serve the best feasible TURN Server (by taking 
 
 ### Configuration
 
-### Initialization and Operation of the MatrixMN
+### Initialization and Operation of the QoS Broker
 - ensure that you have a global installation of the gulp task-runner. If not: ***sudo npm install -g gulp***
 - first execute ***npm install*** to install the dependencies
 - execute ***gulp help*** to see a list of available commands
