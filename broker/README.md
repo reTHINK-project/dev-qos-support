@@ -3,8 +3,7 @@ The repository for the Broker to serve the best feasible TURN Server (by taking 
 
 ### Contents of this repository:
 ***TODOs:***
-- describe setup of a Matrix.org HS as docker container (refer to https://hub.docker.com/r/silviof/docker-matrix/ for initial information.)
-- describe configuration of the MatrixMN as Application Service in the HS (i.e. howto link the MatrixMN code with the HS)
+
 
 ### Configuration
 
