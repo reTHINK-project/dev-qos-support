@@ -25,11 +25,15 @@ var source = require('vinyl-source-stream');
 var exec = require('child_process');
 
 gulp.task('build', function() {
-  var stubBundler = browserify(['./src/qosrequesthandler.js','./src/main.js'],
+  var stubBundler = browserify(['./src/main.js'],
   {
     debug: false
   }).
   exclude('express').
+  exclude('requestify').
+  exclude('microtime').
+  exclude('http').
+  exclude('process').
   transform(babel);
 
   function rebundle() {
@@ -38,7 +42,7 @@ gulp.task('build', function() {
         console.error(err);
         this.emit('end');
       })
-      .pipe(source('qosbroker.js'))
+      .pipe(source('qosbroker-agent.js'))
       .pipe(gulp.dest('./dist'));
   }
   rebundle();
@@ -56,7 +60,7 @@ gulp.task('dist', ['build'], shell.task([
 
 gulp.task('start', ['dist'], shell.task([
   'sleep 1',
-  'cd dist && node qosbroker.js'
+  'cd dist && node qosbroker-agent.js'
 ]));
 
 gulp.task('test', [], shell.task([
@@ -70,8 +74,8 @@ gulp.task('help', function() {
   console.log('\nThe following gulp tasks are available:\n');
   console.log('gulp' + ' ' + 'help\t\t' + '# show this help\n');
   console.log('gulp' + ' ' + 'doc\t\t' + '# generates documentation in docs folder\n');
-  console.log('gulp' + ' ' + 'build\t\t' + '# transpile and bundle the Qos Broker Sources\n');
+  console.log('gulp' + ' ' + 'build\t\t' + '# transpile and bundle the Qos Broker Agent Sources\n');
   console.log('gulp' + ' ' + 'dist\t\t' + '# creates dist folder with transpiled code (depends on build)\n');
-  console.log('gulp' + ' ' + 'start\t\t' + '# starts the QoSBroker from dist folder (depends on dist)\n');
+  console.log('gulp' + ' ' + 'start\t\t' + '# starts the QoSBroker Agent from dist folder (depends on dist)\n');
   console.log('gulp' + ' ' + 'test\t\t' + '# executes the test cases\n');
 })

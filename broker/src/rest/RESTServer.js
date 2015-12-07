@@ -3,6 +3,8 @@ var app = Express();
 
 import QoSRequestHandler from '../qosrequesthandler';
 
+var nodeStates = [];
+
 /**
  * The REST Server
  */
@@ -25,9 +27,16 @@ export default class RESTServer {
 
   initialize() {
     console.log("Initializing the resources");
+
     app.get('/turn-servers/:sessionId', (req, res) => {
-      this._processTURNServerRequest(req, res)
+      this._processTURNServerRequest(req, res);
     });
+
+    // Todo: Needs to become a post with JSON as content.. easier to handle....
+    app.get('/turn-servers/update/:servingArea/:from/:to/:rtt', (req, res) => {
+      this._processUpdateMessage(req, res);
+    });
+
     this.qosHandler = new QoSRequestHandler();
     console.log("Done Initializing");
   }
@@ -58,6 +67,27 @@ export default class RESTServer {
       turnServers: this._calculateBestTURNServer()
     });
   }
+
+  /**
+   * Process the update message and push them into the storage "array"
+   */
+  _processUpdateMessage(req, res) {
+    var servingArea = req.params.servingArea;
+    var from = req.params.from;
+    var to = req.params.to;
+
+    var nodeStatus = {
+      servingArea: req.params.servingArea,
+      from: req.params.from,
+      to: req.params.to,
+      rtt: req.params.rtt
+    }
+
+    console.log("pushing to array: "  + JSON.stringify(nodeStatus))
+    nodeStates.push(nodeStatus);
+
+  }
+
 
   /*
    * Process, based on information we store, the best/most feasible TURN Server
