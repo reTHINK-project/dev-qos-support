@@ -30,6 +30,7 @@ gulp.task('build', function() {
     debug: false
   }).
   exclude('express').
+  exclude('json-beautify').
   transform(babel);
 
   function rebundle() {
