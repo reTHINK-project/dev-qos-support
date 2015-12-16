@@ -34,6 +34,7 @@ gulp.task('build', function() {
   exclude('microtime').
   exclude('http').
   exclude('process').
+  exclude('body-parser').
   transform(babel);
 
   function rebundle() {

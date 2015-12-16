@@ -22,7 +22,10 @@ var restApp = express();
 var ownId = generateUUID();
 var restPort = 10000;
 var timers = [];
-
+var ownIp = "192.168.7.4"; //To be edited and based on the TURN config
+var TURNPort = 3478; //To be edited and based on the TURN config
+var turnUser = generateUUID();
+var turnPass = generateUUID();
 // The Functions
 
 /*
@@ -119,7 +122,16 @@ function callRemoteAgent(host) {
 
     // Push data to Broker
     // /turn-servers/update/:servingArea/:from/:to/:rtt
-    requestify.get(brokerUrl + "/turn-servers/update/" + body.servingArea + "/" + ownId + "/" + body.nodeId + "/" + calc).then(function (response) {
+    requestify.post(brokerUrl + "/turn-servers/update/", {
+      servingArea: body.servingArea,
+      from: ownId,
+      to: body.nodeId,
+      rtt: calc,
+      ipAddress: ownIp,
+      turnPort: TURNPort,
+      turnUser: turnUser,
+      turnPass: turnPass
+    }).then(function (response) {
       log("Done pushing");
     }, function (err) {
       console.log("Error " + err);
