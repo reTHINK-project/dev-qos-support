@@ -1,6 +1,7 @@
 var gulp = require('gulp');
 var exec = require('child_process').exec;
 var shell = require('gulp-shell');
+var util = require('gulp-util');
 
 // Gulp task to generate development documentation;
 gulp.task('doc_alt', function(done) {
@@ -61,7 +62,7 @@ gulp.task('dist', ['build'], shell.task([
 
 gulp.task('start', ['dist'], shell.task([
   'sleep 1',
-  'cd dist && node qosbroker-agent.js'
+  'cd dist && node qosbroker-agent.js ' + util.env.port || '10000'
 ]));
 
 gulp.task('test', [], shell.task([
