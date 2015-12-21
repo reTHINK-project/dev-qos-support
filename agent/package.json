@@ -1,7 +1,7 @@
 {
   "name": "dev-qos-broker-agent",
   "version": "0.1.0",
-  "description": "Matrix.org based messaging node",
+  "description": "Feasible TURN Server Broker Agnet",
   "main": "dist/qos-broker-agent.js",
   "scripts": {
     "init-setup": "npm init && npm install -g jspm karma-cli gulp-cli && npm install",
