@@ -32,21 +32,18 @@ export default class RESTServer {
     console.log("Initializing the resources");
 
     app.get('/turn-servers/:sessionId/:servingArea', (req, res) => {
-      console.log("I am here");
       this._processTURNServerRequest(req, res);
     });
 
-
-    app.post('/turn-servers/update/', (req, res) => {
+    app.post('/turn-servers-management/update/', (req, res) => {
       // Extract servingArea, from, to, rtt out of the JSON Body
       this._processUpdateMessage(req, res);
       res.send("OK for the update");
     });
 
-    // app.get('/turn-servers/list/:servingArea', (req, res) => {
-    //   // Extract servingArea, from, to, rtt out of the JSON Body
-    //   this._processTURNServerListReq(req, res);
-    // });
+    app.get('/turn-servers-management/listAgents/:servingArea', (req, res) => {
+      this._processTURNServerAgentListReq(req, res);
+    });
 
     this.qosHandler = new QoSRequestHandler();
     console.log("Done Initializing");
@@ -93,7 +90,8 @@ export default class RESTServer {
       ipAddress: jsonBody.ipAddress,
       turnPort: jsonBody.turnPort,
       turnUser: jsonBody.turnUser,
-      turnPass: jsonBody.turnPass
+      turnPass: jsonBody.turnPass,
+      agentAddress: jsonBody.agentAddress
     }
 
     this._pushToStates(nodeStatus);
@@ -104,32 +102,32 @@ export default class RESTServer {
    * Description: Pushes the State information into the given servingArea
    */
   _pushToStates(status) {
-    if(status && status.servingArea) {
+    if (status && status.servingArea) {
       // If this servingArea is not existing, create a new array.
-      if(!nodeStates[status.servingArea]) {
+      if (!nodeStates[status.servingArea]) {
         nodeStates[status.servingArea] = {};
       }
       // Extract the serving area data
       let servingArea = nodeStates[status.servingArea];
 
       // check if the Agent/TURN Node already exists
-      if(!servingArea[status.from]) {
+      if (!servingArea[status.from]) {
         servingArea[status.from] = {};
       }
       // Get the actual element
       let node = servingArea[status.from];
 
       // Check if the remote Hosts list is already existing
-      if(!node.remoteList) {
+      if (!node.remoteList) {
         node.remoteList = {};
       }
 
       // Push the latest data
-      node.remoteList = status;
+      node.remoteList[status.to] = status;
 
       // print overall object:
-      console.log("Current States:");
-      console.log(beautify(nodeStates, null, 2, 100));
+      // console.log("Current States:");
+      // console.log(beautify(nodeStates, null, 2, 100));
 
     } else {
       console.err("Status JSON is undefined or Serving Area not set");
@@ -175,11 +173,20 @@ export default class RESTServer {
    * Description: Responds the list of agents which are running inside the
    * same servingArea.
    */
-  _processTURNServerListReq(req, res) {
+  _processTURNServerAgentListReq(req, res) {
     let servingArea = req.params.servingArea;
-    if(servingArea) {
-
-    }
+    if (servingArea) {
+      let nodes = nodeStates[servingArea]; // get all nodes from this serving area
+      let outArray = [];
+      console.log(">>> LIST ");
+      for (var nodeId in nodes) {
+        console.log(nodeId + "\t> " + nodes[nodeId].remoteList[nodeId].agentAddress);
+        outArray.push(nodes[nodeId].remoteList[nodeId].agentAddress);
+      }
+      res.send(outArray);
+  } else {
+    res.send("Wrong or unsupported ServingArea");
   }
+}
 
 } // end class

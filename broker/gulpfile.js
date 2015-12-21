@@ -28,10 +28,11 @@ gulp.task('build', function() {
   var stubBundler = browserify(['./src/qosrequesthandler.js','./src/main.js'],
   {
     debug: false
-  }).
-  exclude('express').
-  exclude('json-beautify').
-  transform(babel);
+  })
+  .exclude('express')
+  .exclude('json-beautify')
+  .exclude('net')
+  .transform(babel);
 
   function rebundle() {
     stubBundler.bundle()

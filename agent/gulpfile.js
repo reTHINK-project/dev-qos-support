@@ -3,6 +3,9 @@ var exec = require('child_process').exec;
 var shell = require('gulp-shell');
 var util = require('gulp-util');
 
+
+
+console.log(util.env);
 // Gulp task to generate development documentation;
 gulp.task('doc_alt', function(done) {
 
@@ -62,7 +65,8 @@ gulp.task('dist', ['build'], shell.task([
 
 gulp.task('start', ['dist'], shell.task([
   'sleep 1',
-  'cd dist && node qosbroker-agent.js ' + util.env.port || '10000'
+  console.log(" cd dist && node qosbroker-agent.js ' + " + util.env.address +"|| '127.0.0.1' + ' ' "+ util.env.port +"|| '10000' "),
+    'cd dist && node qosbroker-agent.js ' + util.env.address + ' ' + util.env.port
 ]));
 
 gulp.task('test', [], shell.task([
@@ -78,6 +82,6 @@ gulp.task('help', function() {
   console.log('gulp' + ' ' + 'doc\t\t' + '# generates documentation in docs folder\n');
   console.log('gulp' + ' ' + 'build\t\t' + '# transpile and bundle the Qos Broker Agent Sources\n');
   console.log('gulp' + ' ' + 'dist\t\t' + '# creates dist folder with transpiled code (depends on build)\n');
-  console.log('gulp' + ' ' + 'start\t\t' + '# starts the QoSBroker Agent from dist folder (depends on dist)\n');
+  console.log('gulp' + ' ' + 'start --address [address] --port [port]\t\t' + '# starts the QoSBroker Agent from dist folder (depends on dist)\n');
   console.log('gulp' + ' ' + 'test\t\t' + '# executes the test cases\n');
 })
