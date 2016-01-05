@@ -12,5 +12,5 @@ The repository for the Broker Agent to serve the best feasible TURN Server at th
 - first execute ***npm install*** to install the dependencies
 - execute ***gulp help*** to see a list of available commands
 
-- ***gulp start --port [portnumber]*** builds, deploys and runs the qos-broker agent and runs the agent on the given port
+- ***gulp start --address [local address] --port [portnumber]*** builds, deploys and runs the qos-broker agent and runs the agent on the given address and port
 - ***gulp test*** executes the testcases
