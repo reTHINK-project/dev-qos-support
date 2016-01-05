@@ -55,7 +55,8 @@ console.log(myProcess.argv);
 
   startREST();
 
-  servingAreaServers["http://" + ownIp + ":" + restPort] = nodeTimeout;
+  // Create first entry (self ref.)
+  // servingAreaServers["http://" + ownIp + ":" + restPort] = nodeTimeout;
 }
 
 /**
@@ -115,8 +116,12 @@ function log(str) {
 }
 
 function runWatchDogs() {
-  setInterval(getRemoteAgents, 1000);
-  setInterval(callRemoteAgents, 5000);
+  setInterval(getRemoteAgents, 5000);
+  setInterval(callRemoteAgents, 2000);
+
+  // Push own entry towards the broker
+  pushDataToBroker(servingAreaName, ownId, 0);
+
 }
 
 /**
@@ -125,54 +130,60 @@ function runWatchDogs() {
 function getRemoteAgents() {
   requestify.get(brokerUrl + '/turn-servers-management/listAgents/' + servingAreaName)
   .then(function(response) {
-    // log("Done requesting agents");
+    console.log("getRemoteAgents(): Done requesting agents");
     var body = response.getBody();
-    for(var i = 0, len = body.length; i < len; i++) {
-      var element = body[i];
-      servingAreaServers[element] = nodeTimeout;
+    console.log("getRemoteAgents(): The response body (length=" + body.length + "): " + body);
+    if(body.length <= 0) {
+      console.log("getRemoteAgents(): Response is empty");
+    } else {
+      for(var i = 0, len = body.length; i < len; i++) {
+        var element = body[i];
+        servingAreaServers[element] = nodeTimeout;
+      }
     }
-
-    console.log(servingAreaServers);
-
+    console.log("getRemoteAgents(): We have the following Serving Area Servers: " + JSON.stringify(servingAreaServers));
   }, function(err) {
-    console.log("Error requesting list of agents: " + err);
+    console.log("getRemoteAgents(): Error requesting list of agents: " + err);
   });
 }
 
 function callRemoteAgents() {
   console.log("> Call remote agents called");
-  servingAreaServers.forEach((item) => {
-    console.log(">> Found " + item);
-    callRemoteAgent(item);
-  });
+  for(var node in servingAreaServers) {
+    console.log(">> Found " + node);
+    callRemoteAgent(node);
+  }
 }
 
 function callRemoteAgent(host) {
-  requestify.get(host + '/performance/ping/' + servingAreaName + '/' + microtime.now()).then(function(response) {
+  requestify.get("http://" + host + '/performance/ping/' + servingAreaName + '/' + microtime.now()).then(function(response) {
     var body = response.getBody();
     var now = microtime.now();
     var calc = Math.round((now - parseInt(body.reqTimestamp)) / 1000);
     log("[" + host + ", Node " + body.nodeId + "] Area: " + body.servingArea + ", Response RTT: " + calc + "ms");
-
-    // Push data to Broker
-    // /turn-servers/update/:servingArea/:from/:to/:rtt
-    requestify.post(brokerUrl + "/turn-servers-management/update/", {
-      agentAddress: ownIp + ":" + restPort,
-      servingArea: body.servingArea,
-      from: ownId,
-      to: body.nodeId,
-      rtt: calc,
-      ipAddress: ownIp,
-      turnPort: TURNPort,
-      turnUser: turnUser,
-      turnPass: turnPass
-    }).then(function(response) {
-      log("Done pushing");
-    }, function(err) {
-      console.log("Error updating the broker" + err);
-    });
+    pushDataToBroker(body.servingArea, body.nodeId, calc);
   }, function(err) {
     console.log("Error trying to ping the given agent address (" + host + " ): " + err);
+  });
+}
+
+function pushDataToBroker(servingArea, toId, rtt) {
+  // Push data to Broker
+  // /turn-servers/update/:servingArea/:from/:to/:rtt
+  requestify.post(brokerUrl + "/turn-servers-management/update/", {
+    agentAddress: ownIp + ":" + restPort,
+    servingArea: servingArea,
+    from: ownId,
+    to: toId,
+    rtt: rtt,
+    ipAddress: ownIp,
+    turnPort: TURNPort,
+    turnUser: turnUser,
+    turnPass: turnPass
+  }).then(function(response) {
+    log("Done pushing");
+  }, function(err) {
+    console.log("Error updating the broker " + JSON.stringify(err));
   });
 }
 

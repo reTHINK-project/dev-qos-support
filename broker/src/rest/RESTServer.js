@@ -9,9 +9,21 @@ import QoSRequestHandler from '../qosrequesthandler';
 var nodeStates = {};
 
 /**
+ * The lifetime of an entry
+ */
+var lifetime = 10;
+
+/**
+ * The time when the housekeeping function shall be fired
+ */
+var housekeepingTimer = 1000;
+
+
+/**
  * The REST Server
  */
 export default class RESTServer {
+
 
   /**
    * construction of the REST Server
@@ -47,6 +59,27 @@ export default class RESTServer {
 
     this.qosHandler = new QoSRequestHandler();
     console.log("Done Initializing");
+
+    // Housekeeping
+    setInterval(this._houseKeeping, housekeepingTimer);
+  }
+
+  /**
+   * Housekeeping
+   */
+  _houseKeeping() {
+    for (var area in nodeStates) {
+      // Go through all areas
+      for (var key in nodeStates[area]) {
+        var servingArea = nodeStates[area];
+        var entry = servingArea[key];
+        entry.remoteList[key].ttl = entry.remoteList[key].ttl - housekeepingTimer/1000;
+        if (entry.remoteList[key].ttl <= 0) {
+          console.log("Remove " + key + " because ttl is lteq 0");
+          delete servingArea[key];
+        }
+      }
+    }
   }
 
   /**
@@ -91,9 +124,10 @@ export default class RESTServer {
       turnPort: jsonBody.turnPort,
       turnUser: jsonBody.turnUser,
       turnPass: jsonBody.turnPass,
-      agentAddress: jsonBody.agentAddress
+      agentAddress: jsonBody.agentAddress,
+      ttl: lifetime
     }
-
+    // console.log("Pushing " + JSON.stringify(nodeStatus) + " to states list");
     this._pushToStates(nodeStatus);
   }
 
@@ -130,7 +164,7 @@ export default class RESTServer {
       // console.log(beautify(nodeStates, null, 2, 100));
 
     } else {
-      console.err("Status JSON is undefined or Serving Area not set");
+      console.log("ERR: Status JSON is undefined or Serving Area not set");
     }
   }
 
@@ -143,30 +177,8 @@ export default class RESTServer {
 
     turnservers = nodeStates[servingArea];
     return turnservers;
-
-    // TODO: Grab information and calculate the best turn server for
-    // the current situation.
-    // ... by now some example turn addresses and credentials.
-    // turnservers.push({
-    //   name: 'turnserver-' + this._generateUUID(),
-    //   ipAddress: '12.13.14.15',
-    //   port: '3478',
-    //   protocol: 'udp',
-    //   username: this._generateUUID(),
-    //   password: this._generateUUID(),
-    //   score: 100
-    // });
-    // turnservers.push({
-    //   name: 'turnserver-' + this._generateUUID(),
-    //   ipAddress: '13.14.15.16',
-    //   port: '3478',
-    //   protocol: 'tcp',
-    //   username: this._generateUUID(),
-    //   password: this._generateUUID(),
-    //   score: 70
-    // });
-    // return turnservers;
   }
+
 
   /**
    * Title: _processTURNServerListReq
@@ -178,11 +190,21 @@ export default class RESTServer {
     if (servingArea) {
       let nodes = nodeStates[servingArea]; // get all nodes from this serving area
       let outArray = [];
-      console.log(">>> LIST ");
+      // console.log(">>> LIST " + JSON.stringify(nodes));
+      console.log("\nServing Area: " + servingArea);
+      console.log("======");
       for (var nodeId in nodes) {
-        console.log(nodeId + "\t> " + nodes[nodeId].remoteList[nodeId].agentAddress);
+        console.log("Node: " + nodeId + "\t" + nodes[nodeId].remoteList[nodeId].agentAddress + "\tttl=" + nodes[nodeId].remoteList[nodeId].ttl);
+
+        // Present the connections to the other agents
+        for (var rAgent in nodes[nodeId].remoteList) {
+          if(rAgent != nodeId) {
+            console.log("\tto " + rAgent + "\trtt=" + nodes[nodeId].remoteList[rAgent].rtt);
+          }
+        }
         outArray.push(nodes[nodeId].remoteList[nodeId].agentAddress);
       }
+      console.log("======");
       res.send(outArray);
   } else {
     res.send("Wrong or unsupported ServingArea");
