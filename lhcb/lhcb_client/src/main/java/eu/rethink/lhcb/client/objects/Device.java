@@ -34,10 +34,47 @@ import java.util.Random;
 import java.util.TimeZone;
 
 /**
- * Created by Robert Ende on 24.02.16.
+ * Implementation of the Device LwM2M Object
  */
 public class Device extends BaseInstanceEnabler {
     private static final Logger LOG = LoggerFactory.getLogger(Device.class);
+
+    private static String manufacturer = "reTHINK Last Hop Connectivity Broker - Client module";
+    private static String model = "Model 1337";
+    private static String serial = "RT-500-000-0001";
+    private static String firmware = "0.1.0";
+    private static String binding = "U";
+    private static Date date = new Date();
+
+    private int getBatteryLevel() {
+        final Random rand = new Random();
+        return rand.nextInt(100);
+    }
+
+    private int getMemoryFree() {
+        final Random rand = new Random();
+        return rand.nextInt(50) + 114;
+    }
+
+    private String utcOffset = new SimpleDateFormat("X").format(Calendar.getInstance().getTime());
+
+    private String getUtcOffset() {
+        return utcOffset;
+    }
+
+    private void setUtcOffset(String t) {
+        utcOffset = t;
+    }
+
+    private String timeZone = TimeZone.getDefault().getID();
+
+    private String getTimezone() {
+        return timeZone;
+    }
+
+    private void setTimezone(String t) {
+        timeZone = t;
+    }
 
     @Override
     public ValueResponse read(int resourceid) {
@@ -100,46 +137,6 @@ public class Device extends BaseInstanceEnabler {
                 return super.write(resourceid, value);
         }
     }
-
-    private static String manufacturer = "reTHINK Last Hop Connectivity Broker - Client module";
-    private static String model = "Model 1337";
-    private static String serial = "RT-500-000-0001";
-    private static String firmware = "0.1.0";
-
-    private static String binding = "U";
-
-    private static Date date = new Date();
-
-    private int getBatteryLevel() {
-        final Random rand = new Random();
-        return rand.nextInt(100);
-    }
-
-    private int getMemoryFree() {
-        final Random rand = new Random();
-        return rand.nextInt(50) + 114;
-    }
-
-    private String utcOffset = new SimpleDateFormat("X").format(Calendar.getInstance().getTime());
-
-    private String getUtcOffset() {
-        return utcOffset;
-    }
-
-    private void setUtcOffset(String t) {
-        utcOffset = t;
-    }
-
-    private String timeZone = TimeZone.getDefault().getID();
-
-    private String getTimezone() {
-        return timeZone;
-    }
-
-    private void setTimezone(String t) {
-        timeZone = t;
-    }
-
 
     /**
      * Returns ValueResponse containing a single String.
