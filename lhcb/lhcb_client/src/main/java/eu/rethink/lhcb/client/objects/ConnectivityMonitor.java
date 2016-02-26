@@ -24,13 +24,11 @@ import org.eclipse.leshan.core.node.LwM2mResource;
 import org.eclipse.leshan.core.node.Value;
 import org.eclipse.leshan.core.response.ValueResponse;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.util.Enumeration;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object
@@ -141,8 +139,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private static Random r = new Random();
 
     private int linkQuality = 255;
+    private String[] ips = new String[1];
+    private String[] routerIps = new String[1];
 
     public ConnectivityMonitor() {
+        getGatewayIPs();
         // keep changing linkQuality to test observing values
         new Thread(new Runnable() {
             @Override
@@ -154,6 +155,54 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                     } catch (Exception e) {
                         //e.printStackTrace();
                     }
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        //e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+
+        // update ip list
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.interrupted()) {
+                    String[] newIps = getIPs();
+                    if (newIps != ips) {
+                        ips = newIps;
+                        try {
+                            fireResourceChange(4);
+                        } catch (Exception e) {
+                            //e.printStackTrace();
+                        }
+                    }
+
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        //e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+
+        // update gateway IPs
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.interrupted()) {
+                    String[] newIps = getGatewayIPs();
+                    if (newIps != routerIps) {
+                        routerIps = newIps;
+                        try {
+                            fireResourceChange(5);
+                        } catch (Exception e) {
+                            //e.printStackTrace();
+                        }
+                    }
+
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -184,6 +233,39 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return new String[]{};
     }
 
+    private static final String routeCmd = "route -n";
+
+    private String[] getGatewayIPs() {
+        try {
+            Process p = Runtime.getRuntime().exec(routeCmd);
+            Scanner sc = new Scanner(p.getInputStream(), "IBM850");
+
+            // "Kernel IP routing table"
+            sc.nextLine();
+
+            // Destination  Gateway     Genmask     Flags       MSS         Window      irtt        Iface
+            sc.nextLine();
+
+            // 0.0.0.0      10.147.65.1 0.0.0.0     UG          0           0           0           eth0
+            // ...
+            LinkedList<String> ips = new LinkedList<>();
+            while (sc.hasNextLine()) {
+                String line = sc.nextLine();
+                do {
+                    line = line.replace("  ", " ");
+                } while (line.contains("  "));
+                String[] splitLine = line.split(" ");
+                if (splitLine[3].equals("UG")) {
+                    ips.add(splitLine[1]);
+                }
+            }
+            return ips.toArray(new String[ips.size()]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     @Override
     public ValueResponse read(int resourceid) {
         switch (resourceid) {
@@ -196,9 +278,9 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             case 3: // link quality
                 return createResponse(resourceid, linkQuality);
             case 4: // ip addresses
-                return createResponse(resourceid, getIPs());
+                return createResponse(resourceid, ips);
             case 5: // router ip
-                return createResponse(resourceid, new String[]{"192.168.0.1"});
+                return createResponse(resourceid, routerIps);
             case 6: // link utilization
                 // TODO implementation
             case 7: // APN
