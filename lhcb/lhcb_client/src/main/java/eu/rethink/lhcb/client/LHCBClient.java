@@ -20,19 +20,25 @@ package eu.rethink.lhcb.client;
 
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import eu.rethink.lhcb.client.objects.Device;
+import eu.rethink.lhcb.client.objects.ExtendedDevice;
 import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.resource.LwM2mObjectEnabler;
 import org.eclipse.leshan.client.resource.ObjectEnabler;
 import org.eclipse.leshan.client.resource.ObjectsInitializer;
+import org.eclipse.leshan.core.model.LwM2mModel;
+import org.eclipse.leshan.core.model.ObjectLoader;
+import org.eclipse.leshan.core.model.ObjectModel;
 import org.eclipse.leshan.core.request.DeregisterRequest;
 import org.eclipse.leshan.core.request.RegisterRequest;
 import org.eclipse.leshan.core.response.RegisterResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,12 +59,26 @@ public class LHCBClient {
     }
 
     public void start() {
+        // get default models
+        List<ObjectModel> objectModels = ObjectLoader.loadDefault();
+
+        // add custom models from model.json
+        InputStream modelStream = getClass().getResourceAsStream("/model.json");
+        objectModels.addAll(ObjectLoader.loadJsonStream(modelStream));
+
+        // map object models by ID
+        HashMap<Integer, ObjectModel> map = new HashMap<>();
+        for (ObjectModel objectModel : objectModels) {
+            map.put(objectModel.id, objectModel);
+        }
+
         // Initialize object list
-        ObjectsInitializer initializer = new ObjectsInitializer();
+        ObjectsInitializer initializer = new ObjectsInitializer(new LwM2mModel(map));
 
         // set dummy Device
         initializer.setClassForObject(3, Device.class);
         initializer.setClassForObject(4, ConnectivityMonitor.class);
+        initializer.setInstancesForObject(3000, new ExtendedDevice());
         List<ObjectEnabler> enablers = initializer.createMandatory(); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
         enablers.add(initializer.create(4));
         InetSocketAddress serverAddress = new InetSocketAddress(serverHost, serverPort);
