@@ -238,7 +238,7 @@ public class WellKnownServlet extends HttpServlet {
 
         } else {
             responseCode = HttpServletResponse.SC_BAD_REQUEST;
-            responseText = "Please specify one of the available devices: " + nameClientMap.keySet();
+            responseText = "Please provide one of the following device IDs: " + nameClientMap.keySet();
         }
 
         //LOG.debug("returning response: " + responseText);
