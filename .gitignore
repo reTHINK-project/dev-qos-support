@@ -3,3 +3,6 @@
 *.iml
 out
 gen
+
+/lhcb/lhcb_broker/target
+/lhcb/lhcb_client/target
