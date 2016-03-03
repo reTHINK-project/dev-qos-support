@@ -20,10 +20,7 @@ package eu.rethink.lhcb.broker.servlet;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.leshan.LinkObject;
 import org.eclipse.leshan.ResponseCode;
@@ -204,11 +201,18 @@ public class WellKnownServlet extends HttpServlet {
                         Map<String, JsonElement> addMap = new LinkedHashMap<>();
                         for (Map.Entry<String, JsonElement> entry : resources.entrySet()) {
                             JsonObject resource = entry.getValue().getAsJsonObject();
+                            if (resource.has("values")) {
+                                JsonObject values = resource.getAsJsonObject("values");
+                                JsonArray valueSet = new JsonArray();
+                                for (Map.Entry<String, JsonElement> value : values.entrySet()) {
+                                    valueSet.add(value.getValue());
+                                }
+                                addMap.put(modelResources.get(Integer.valueOf(entry.getKey())).name, valueSet);
+                            } else {
+                                addMap.put(modelResources.get(Integer.valueOf(entry.getKey())).name, resource.get("value"));
+                            }
                             resource.remove("type");
                             resource.remove("id");
-                            //resources.add(modelResources.get(Integer.valueOf(entry.getKey())).name, resource);
-                            addMap.put(modelResources.get(Integer.valueOf(entry.getKey())).name, resource);
-                            //resources.remove(entry.getKey());
                             removeList.add(entry.getKey());
                         }
                         for (String s : removeList) {
@@ -217,7 +221,7 @@ public class WellKnownServlet extends HttpServlet {
                         for (Map.Entry<String, JsonElement> entry : addMap.entrySet()) {
                             resources.add(entry.getKey(), entry.getValue());
                         }
-                        responseText = gson.toJson(json);
+                        responseText = gson.toJson(resources);
                     } else {
                         responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
                         responseText = gson.toJson(response);

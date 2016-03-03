@@ -142,8 +142,8 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private Map<Integer, String> routerIps = new HashMap<>();
 
     public ConnectivityMonitor() {
-        getIPs();
-        getGatewayIPs();
+        ips = getIPs();
+        routerIps = getGatewayIPs();
         // keep changing linkQuality to test observing values
         // FIXME: thread deactivated for debugging purposes
         //new Thread(new Runnable() {
