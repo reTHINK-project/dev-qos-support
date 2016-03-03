@@ -18,38 +18,28 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
-import org.eclipse.leshan.core.node.LwM2mResource;
-import org.eclipse.leshan.core.node.Value;
-import org.eclipse.leshan.core.response.ValueResponse;
+import org.eclipse.leshan.core.response.ReadResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Random;
 
 /**
- * Created by Robert Ende on 02.03.16.
+ * A small custom Instance that holds extra information about the LHCB Client
  */
 public class ExtendedDevice extends BaseInstanceEnabler {
-    private String deviceID = "0000";
+    private static final Logger LOG = LoggerFactory.getLogger(ExtendedDevice.class);
 
+    private String deviceID = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
 
     @Override
-    public ValueResponse read(int resourceid) {
+    public ReadResponse read(int resourceid) {
+        LOG.debug("read on " + resourceid + " -> " + deviceID);
         switch (resourceid) {
             case 0:
-                return createResponse(resourceid, deviceID);
-            default:
-                return super.read(resourceid);
+                return ReadResponse.success(resourceid, deviceID);
         }
-    }
-
-    /**
-     * Returns ValueResponse containing a single String.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param value      - the String value to be put into the ValueResponse
-     * @return ValueResponse containing the specified String
-     */
-    private ValueResponse createResponse(int resourceid, String value) {
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                Value.newStringValue(value)));
+        return super.read(resourceid);
     }
 }

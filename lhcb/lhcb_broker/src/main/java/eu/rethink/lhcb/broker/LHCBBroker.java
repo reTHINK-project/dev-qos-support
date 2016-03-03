@@ -18,7 +18,7 @@
 
 package eu.rethink.lhcb.broker;
 
-import eu.rethink.lhcb.broker.handler.RequestHandler;
+import eu.rethink.lhcb.broker.provider.CustomModelProvider;
 import eu.rethink.lhcb.broker.servlet.WellKnownServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -49,25 +49,24 @@ public class LHCBBroker {
     }
 
     public void start() {
+        // create Leshan server
         LeshanServerBuilder lsb = new LeshanServerBuilder();
         lsb.setLocalAddress("0", coapPort);
+        lsb.setObjectModelProvider(new CustomModelProvider());
         leshanServer = lsb.build();
         leshanServer.start();
+
+        // create HTTP server
         server = new Server(httpPort);
-
-        RequestHandler requestHandler = new RequestHandler(leshanServer);
-
         ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
-        ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(requestHandler));
+        ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(leshanServer));
         servletContextHandler.addServlet(servletHolder, "/.well-known/*");
-
-        // Start jetty
         try {
             LOG.info("Server should be available at: " + server.getURI());
             LOG.info("Starting server...");
             server.start();
         } catch (Exception e) {
-            LOG.error("jetty error", e);
+            LOG.error("HTTP server error", e);
         }
     }
 

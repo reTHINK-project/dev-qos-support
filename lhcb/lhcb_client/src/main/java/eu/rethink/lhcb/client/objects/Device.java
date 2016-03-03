@@ -18,20 +18,14 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
-import org.eclipse.leshan.core.node.LwM2mResource;
-import org.eclipse.leshan.core.node.Value;
-import org.eclipse.leshan.core.response.LwM2mResponse;
-import org.eclipse.leshan.core.response.ValueResponse;
+import org.eclipse.leshan.core.model.ResourceModel;
+import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Random;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * Implementation of the Device LwM2M Object
@@ -77,76 +71,35 @@ public class Device extends BaseInstanceEnabler {
     }
 
     @Override
-    public ValueResponse read(int resourceid) {
+    public ReadResponse read(int resourceid) {
         LOG.debug("Read on Device Resource " + resourceid);
         switch (resourceid) {
             case 0:
-                return createResponse(resourceid, manufacturer);
+                return ReadResponse.success(resourceid, manufacturer);
             case 1:
-                return createResponse(resourceid, model);
+                return ReadResponse.success(resourceid, model);
             case 2:
-                return createResponse(resourceid, serial);
+                return ReadResponse.success(resourceid, serial);
             case 3:
-                return createResponse(resourceid, firmware);
+                return ReadResponse.success(resourceid, firmware);
             case 9:
-                return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                        Value.newIntegerValue(getBatteryLevel())));
+                return ReadResponse.success(resourceid, getBatteryLevel());
             case 10:
-                return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                        Value.newIntegerValue(getMemoryFree())));
+                return ReadResponse.success(resourceid, getMemoryFree());
             case 11:
-                return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                        new Value<?>[]{Value.newIntegerValue(0)}));
+                Map<Integer, Long> errorCodes = new HashMap<>();
+                errorCodes.put(0, (long) 0);
+                return ReadResponse.success(resourceid, errorCodes, ResourceModel.Type.INTEGER);
             case 13:
-                return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                        Value.newDateValue(date)));
+                return ReadResponse.success(resourceid, date);
             case 14:
-                return createResponse(resourceid, getUtcOffset());
+                return ReadResponse.success(resourceid, getUtcOffset());
             case 15:
-                return createResponse(resourceid, getTimezone());
+                return ReadResponse.success(resourceid, getTimezone());
             case 16:
-                return createResponse(resourceid, binding);
+                return ReadResponse.success(resourceid, binding);
             default:
                 return super.read(resourceid);
         }
-    }
-
-    @Override
-    public LwM2mResponse execute(int resourceid, byte[] params) {
-        LOG.debug("Execute on Device resource " + resourceid);
-        if (params != null && params.length != 0)
-            LOG.debug("\t params " + new String(params));
-        return new LwM2mResponse(ResponseCode.CHANGED);
-    }
-
-    @Override
-    public LwM2mResponse write(int resourceid, LwM2mResource value) {
-        LOG.debug("Write on Device Resource " + resourceid + " value " + value);
-        switch (resourceid) {
-            case 13:
-                return new LwM2mResponse(ResponseCode.NOT_FOUND);
-            case 14:
-                setUtcOffset((String) value.getValue().value);
-                fireResourceChange(resourceid);
-                return new LwM2mResponse(ResponseCode.CHANGED);
-            case 15:
-                setTimezone((String) value.getValue().value);
-                fireResourceChange(resourceid);
-                return new LwM2mResponse(ResponseCode.CHANGED);
-            default:
-                return super.write(resourceid, value);
-        }
-    }
-
-    /**
-     * Returns ValueResponse containing a single String.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param value      - the String value to be put into the ValueResponse
-     * @return ValueResponse containing the specified String
-     */
-    private ValueResponse createResponse(int resourceid, String value) {
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                Value.newStringValue(value)));
     }
 }

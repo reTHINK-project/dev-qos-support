@@ -18,11 +18,9 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import org.eclipse.leshan.ResponseCode;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
-import org.eclipse.leshan.core.node.LwM2mResource;
-import org.eclipse.leshan.core.node.Value;
-import org.eclipse.leshan.core.response.ValueResponse;
+import org.eclipse.leshan.core.model.ResourceModel;
+import org.eclipse.leshan.core.response.ReadResponse;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -136,106 +134,120 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             As specified in TS [3GPP 23.003].
     */
 
-    private static Random r = new Random();
+    private static final Random r = new Random();
+    private static final String routeCmd = "route -n";
 
-    private int linkQuality = 255;
-    private String[] ips = new String[1];
-    private String[] routerIps = new String[1];
+    private int linkQuality = r.nextInt(256);
+    private Map<Integer, String> ips = new HashMap<>();
+    private Map<Integer, String> routerIps = new HashMap<>();
 
     public ConnectivityMonitor() {
+        getIPs();
         getGatewayIPs();
         // keep changing linkQuality to test observing values
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.interrupted()) {
-                    linkQuality = r.nextInt(256);
-                    try {
-                        fireResourceChange(3);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                    }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        //e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
+        // FIXME: thread deactivated for debugging purposes
+        //new Thread(new Runnable() {
+        //    @Override
+        //    public void run() {
+        //        while (!Thread.interrupted()) {
+        //            linkQuality = r.nextInt(256);
+        //            try {
+        //                fireResourcesChange(3);
+        //            } catch (Exception e) {
+        //                //e.printStackTrace();
+        //            }
+        //            try {
+        //                Thread.sleep(1000);
+        //            } catch (InterruptedException e) {
+        //                //e.printStackTrace();
+        //            }
+        //        }
+        //    }
+        //}).start();
 
         // update ip list
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.interrupted()) {
-                    String[] newIps = getIPs();
-                    if (newIps != ips) {
-                        ips = newIps;
-                        try {
-                            fireResourceChange(4);
-                        } catch (Exception e) {
-                            //e.printStackTrace();
-                        }
-                    }
-
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        //e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
+        // FIXME: thread deactivated for debugging purposes
+        //new Thread(new Runnable() {
+        //    @Override
+        //    public void run() {
+        //        while (!Thread.interrupted()) {
+        //            Map<Integer, String> newIps = getIPs();
+        //            if (!newIps.equals(ips)) {
+        //                ips = newIps;
+        //                try {
+        //                    fireResourcesChange(4);
+        //                } catch (Exception e) {
+        //                    //e.printStackTrace();
+        //                }
+        //            }
+        //
+        //            try {
+        //                Thread.sleep(1000);
+        //            } catch (InterruptedException e) {
+        //                //e.printStackTrace();
+        //            }
+        //        }
+        //    }
+        //}).start();
 
         // update gateway IPs
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (!Thread.interrupted()) {
-                    String[] newIps = getGatewayIPs();
-                    if (newIps != routerIps) {
-                        routerIps = newIps;
-                        try {
-                            fireResourceChange(5);
-                        } catch (Exception e) {
-                            //e.printStackTrace();
-                        }
-                    }
-
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        //e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
+        // FIXME: thread deactivated for debugging purposes
+        //new Thread(new Runnable() {
+        //    @Override
+        //    public void run() {
+        //        while (!Thread.interrupted()) {
+        //            Map<Integer, String> newGatewayIPs = getGatewayIPs();
+        //            if (!newGatewayIPs.equals(routerIps)) {
+        //                routerIps = newGatewayIPs;
+        //                try {
+        //                    fireResourcesChange(5);
+        //                } catch (Exception e) {
+        //                    //e.printStackTrace();
+        //                }
+        //            }
+        //
+        //            try {
+        //                Thread.sleep(1000);
+        //            } catch (InterruptedException e) {
+        //                //e.printStackTrace();
+        //            }
+        //        }
+        //    }
+        //}).start();
     }
 
-    private String[] getIPs() {
+    /**
+     * Creates a map of available host addresses for this machine.
+     * They key in the map is an index starting from 0
+     *
+     * @return A map in the form of index:IP
+     */
+    private Map<Integer, String> getIPs() {
+        Map<Integer, String> ips = new HashMap<>();
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-            List<String> ips = new LinkedList<>();
-
+            int i = 0;
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
                 Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
                 while (inetAddresses.hasMoreElements()) {
-                    ips.add(inetAddresses.nextElement().getHostAddress());
+                    ips.put(i++, inetAddresses.nextElement().getHostAddress());
                 }
             }
-
-            return ips.toArray(new String[ips.size()]);
         } catch (SocketException e) {
             //e.printStackTrace();
         }
-        return new String[]{};
+        return ips;
     }
 
-    private static final String routeCmd = "route -n";
-
-    private String[] getGatewayIPs() {
+    /**
+     * Creates a map of available router addresses for this machine.
+     * They key in the map is an index starting from 0
+     *
+     * @return A map in the form of index:IP
+     */
+    private Map<Integer, String> getGatewayIPs() {
+        Map<Integer, String> ips = new HashMap<>();
         try {
             Process p = Runtime.getRuntime().exec(routeCmd);
             Scanner sc = new Scanner(p.getInputStream(), "IBM850");
@@ -248,7 +260,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
 
             // 0.0.0.0      10.147.65.1 0.0.0.0     UG          0           0           0           eth0
             // ...
-            LinkedList<String> ips = new LinkedList<>();
+            int i = 0;
             while (sc.hasNextLine()) {
                 String line = sc.nextLine();
                 do {
@@ -256,31 +268,32 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                 } while (line.contains("  "));
                 String[] splitLine = line.split(" ");
                 if (splitLine[3].equals("UG")) {
-                    ips.add(splitLine[1]);
+                    ips.put(i++, splitLine[1]);
                 }
             }
-            return ips.toArray(new String[ips.size()]);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
+        return ips;
     }
 
     @Override
-    public ValueResponse read(int resourceid) {
+    public ReadResponse read(int resourceid) {
         switch (resourceid) {
             case 0: // current network bearer
-                return createResponse(resourceid, 41); // Ethernet
+                return ReadResponse.success(resourceid, 41); // Ethernet
             case 1: // network bearers
-                return createResponse(resourceid, new int[]{41});
+                Map<Integer, Long> map = new HashMap<>(1);
+                map.put(0, (long) 41);
+                return ReadResponse.success(resourceid, map, ResourceModel.Type.INTEGER);
             case 2: // signal strength
-                return createResponse(resourceid, 110);
+                return ReadResponse.success(resourceid, 110);
             case 3: // link quality
-                return createResponse(resourceid, linkQuality);
+                return ReadResponse.success(resourceid, linkQuality);
             case 4: // ip addresses
-                return createResponse(resourceid, ips);
+                return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
             case 5: // router ip
-                return createResponse(resourceid, routerIps);
+                return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
             case 6: // link utilization
                 // TODO implementation
             case 7: // APN
@@ -294,63 +307,5 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             default:
                 return super.read(resourceid);
         }
-    }
-
-    /**
-     * Returns ValueResponse containing a single String.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param value      - the String value to be put into the ValueResponse
-     * @return ValueResponse containing the specified String
-     */
-    private ValueResponse createResponse(int resourceid, String value) {
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                Value.newStringValue(value)));
-    }
-
-    /**
-     * Returns ValueResponse containing a single Integer.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param value      - the Integer value to be put into the ValueResponse
-     * @return ValueResponse containing the specified Integer
-     */
-    private ValueResponse createResponse(int resourceid, int value) {
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid,
-                Value.newIntegerValue(value)));
-    }
-
-    /**
-     * Returns ValueResponse containing an array of Strings.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param values     - the String values to be put into the ValueResponse
-     * @return ValueResponse containing the specified Strings
-     */
-    private ValueResponse createResponse(int resourceid, int[] values) {
-        Value[] vs = new Value[values.length];
-        for (int i = 0; i < values.length; i++) {
-            int v = values[i];
-            vs[i] = Value.newIntegerValue(v);
-        }
-
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid, vs));
-    }
-
-    /**
-     * Returns ValueResponse containing an array of Integers.
-     *
-     * @param resourceid - resource ID that is being read
-     * @param values     - the Integer values to be put into the ValueResponse
-     * @return ValueResponse containing the specified Integers
-     */
-    private ValueResponse createResponse(int resourceid, String[] values) {
-        Value[] vs = new Value[values.length];
-        for (int i = 0; i < values.length; i++) {
-            String v = values[i];
-            vs[i] = Value.newStringValue(v);
-        }
-
-        return new ValueResponse(ResponseCode.CONTENT, new LwM2mResource(resourceid, vs));
     }
 }

@@ -104,7 +104,7 @@
         <dependency>
             <groupId>org.eclipse.leshan</groupId>
             <artifactId>leshan-all</artifactId>
-            <version>0.1.11-M5</version>
+            <version>0.1.11-M8</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
@@ -126,7 +126,11 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.api.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>19.0</version>
+        </dependency>
     </dependencies>
 
 </project>
