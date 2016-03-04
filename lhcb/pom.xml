@@ -8,12 +8,15 @@
     <artifactId>rethink-lhcb</artifactId>
     <name>reTHINK Last Hop Connectivity Broker</name>
     <packaging>pom</packaging>
-    <version>0.1.0</version>
+    <version>${lhcb.version}</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jetty.version>9.1.4.v20140401</jetty.version>
+        <jetty.version>9.2.15.v20160210</jetty.version>
         <slf4j.api.version>[1.7.0, 1.8)</slf4j.api.version>
+        <log4j.version>2.5</log4j.version>
+        <leshan.version>0.1.11-M8</leshan.version>
+        <lhcb.version>0.1.0</lhcb.version>
     </properties>
 
     <modules>
@@ -102,34 +105,19 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.eclipse.leshan</groupId>
-            <artifactId>leshan-all</artifactId>
-            <version>0.1.11-M8</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-webapp</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlets</artifactId>
-            <version>${jetty.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.api.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>19.0</version>
         </dependency>
     </dependencies>
 
