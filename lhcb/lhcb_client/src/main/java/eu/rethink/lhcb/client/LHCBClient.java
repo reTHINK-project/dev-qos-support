@@ -79,7 +79,7 @@ public class LHCBClient {
         List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING, 3000); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
 
         // Create client
-        LeshanClientBuilder builder = new LeshanClientBuilder("localhost");
+        LeshanClientBuilder builder = new LeshanClientBuilder("Last Hop Connectivity Broker - Client Module");
         //builder.setLocalAddress(localAddress, localPort);
         //builder.setLocalSecureAddress(secureLocalAddress, secureLocalPort);
         builder.setObjects(enablers);
