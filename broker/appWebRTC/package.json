@@ -1,0 +1,17 @@
+{
+  "name": "appwebrtc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "appWebRTC.js",
+  "dependencies": {
+    "socket.io": "^1.2.0",
+    "express":"*"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node appWebRTC.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

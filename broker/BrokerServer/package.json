@@ -1,0 +1,26 @@
+{
+  "name": "brokerAdminServer",
+  "version": "1.0.0",
+  "description": "Broker admin server",
+  "main": "server.js",
+  "dependencies": {
+    "basic-auth": "^1.0.3",
+    "bluebird": "*",
+    "body-parser": "*",
+    "crypto-js": "*",
+    "express": "*",
+    "express-session": "^1.13.0",
+    "promise": "*",
+    "redis": "^2.4.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://go-git-001.fasgfi.fr/ORANGE-LABS/Broker"
+  },
+  "author": "",
+  "license": "ISC"
+}
