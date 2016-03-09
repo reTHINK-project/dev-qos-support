@@ -1,0 +1,304 @@
+<!--
+  ~ Copyright [2015-2017] Fraunhofer Gesellschaft e.V., Institute for
+  ~ Open Communication Systems (FOKUS)
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  ~
+  -->
+
+<html>
+<head>
+    <title>Last Hop Connectivity Broker - GUI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="angular.min.js"></script>
+</head>
+
+<body ng-app="lhcbgui" ng-controller="lhcbCtrl">
+<h1>Last Hop Connectivity Broker - GUI</h1>
+
+<p>Please select one of the available clients:
+    <select name="singleSelect" ng-change="onClientSelect(client)" ng-model="client"
+            ng-options="client for client in clients"></select>
+</p>
+
+<div>
+    <div ng-show="client"
+         style="font-family: monospace; background-color: lightgrey; display: inline-block; border: 2px solid; padding: 30px">
+        <h2>Connectivity Monitoring</h2>
+        <table border="1" style="border: 1px">
+            <tr>
+                <td align="right">Network Bearer</td>
+                <td>
+                    {{bearer}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Available Network Bearer</td>
+                <td>
+                    <a ng-repeat="b in bearers">{{b}}<br ng-if="$index < (bearers.length + 1)"></a>
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Radio Signal Strength</td>
+                <td>
+                    {{rss}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Link Quality</td>
+                <td>
+                    {{lq}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">IP Addresses</td>
+                <td>
+                    <a ng-repeat="ip in ips">{{ip}}<br ng-if="$index < (ips.length + 1)"></a>
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Router IP Addresse</td>
+                <td>
+                    <a ng-repeat="ip in rips">{{ip}}<br ng-if="$index < (rips.length + 1)"></a>
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Link Utilization</td>
+                <td>
+                    {{lu}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">APN</td>
+                <td>
+                    <a ng-repeat="apn in apns">{{apn}}<br ng-if="$index < (apns.length + 1)"></a>
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Cell ID</td>
+                <td>
+                    {{cid}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Network Bearer</td>
+                <td>
+                    {{bearer}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Serving Mobile Network Code</td>
+                <td>
+                    {{smnc}}
+                </td>
+            </tr>
+            <tr>
+                <td align="right">Serving Mobile Country Code</td>
+                <td>
+                    {{smcc}}
+                </td>
+            </tr>
+
+        </table>
+
+        <h3>device URL: {{getClientURL(client)}}</h3>
+    </div>
+</div>
+<p>---------------------------</p>
+<button ng-click="debug = !debug" ng-init="debug = false">Toggle Debug Info</button>
+<div ng-show="debug">
+    <pre>{{response | json}}</pre>
+</div>
+</body>
+<script>
+    var app = angular.module("lhcbgui", []);
+    app.controller("lhcbCtrl", function ($scope, $location) {
+        var notifySource;
+
+        $scope.getClientList = function () {
+            var callback = function (response) {
+                updateClientList(response);
+            };
+
+            makeGET("/.well-known", callback);
+        };
+
+
+        $scope.observeClientList = function () {
+            var clientSource = new EventSource("event");
+            var clientNotCallback = function (msg) {
+                var clients = JSON.parse(msg.data);
+                updateClientList(clients);
+            };
+
+            clientSource.addEventListener("CLIENTS", clientNotCallback, false);
+        };
+
+        $scope.onClientSelect = function (client) {
+            if (client) {
+                $scope.getClientConnectivity(client);
+                $scope.observeClient(client);
+            }
+        };
+
+        $scope.getClientConnectivity = function (client) {
+            var callback = function (response) {
+                console.log("got response for get request:", response);
+                $scope.$apply(function () {
+                    analyzeResources(response);
+                })
+            };
+
+            makeGET("/.well-known/" + client, callback);
+        };
+
+
+        $scope.observeClient = function (client) {
+            console.log("observeClient:", client);
+            if (!!window.EventSource) {
+                if (notifySource) {
+                    notifySource.close();
+                }
+                notifySource = new EventSource('event?ep=' + client);
+                console.log("notifySource:", notifySource);
+                var notificationCallback = function (msg) {
+                    console.log("got notification!", msg);
+                    var content = JSON.parse(msg.data);
+                    $scope.$apply(function () {
+                        $scope.response = content;
+                        var resources = content["val"]["resources"];
+                        analyzeResources(resources);
+                    });
+                };
+                notifySource.addEventListener('NOTIFICATION', notificationCallback, false);
+            } else {
+                // Result to xhr polling :(
+            }
+        };
+
+        var updateClientList = function (clients) {
+            if (!(clients instanceof Object)) {
+                clients = JSON.parse(clients);
+            }
+            console.log("got client list: ", clients);
+            var client = $scope.client;
+            console.log("is %s in %s? -> %s", client, clients, clients.indexOf(client) > -1);
+            if (client && clients.indexOf(client) === -1) {
+                console.warn("Client " + client + " disconnected from the server!");
+            }
+            $scope.$apply(function () {
+                $scope.clients = clients;
+            })
+        };
+
+        var analyzeResources = function (resources) {
+            if (!(resources instanceof Object)) {
+                resources = JSON.parse(resources);
+            }
+            var values = {};
+            var valArray = [];
+            var v = "";
+            for (var res in resources) {
+                if (resources.hasOwnProperty(res)) {
+                    switch (res) {
+                        case "0":
+                            $scope.bearer = resources[res]["value"];
+                            break;
+                        case "1":
+                            values = resources[res]["values"];
+                            valArray = [];
+                            for (v in values) {
+                                if (values.hasOwnProperty(v))
+                                    valArray.push(values[v])
+                            }
+                            $scope.bearers = valArray;
+                            break;
+                        case "2":
+                            $scope.rss = resources[res]["value"];
+                            break;
+                        case "3":
+                            $scope.lq = resources[res]["value"];
+                            break;
+                        case "4":
+                            values = resources[res]["values"];
+                            valArray = [];
+                            for (v in values) {
+                                if (values.hasOwnProperty(v))
+                                    valArray.push(values[v])
+                            }
+                            $scope.ips = valArray;
+                            break;
+                        case "5":
+                            $scope.rips = resources[res]["values"];
+                            break;
+                        case "6":
+                            $scope.lu = resources[res]["value"];
+                            break;
+                        case "7":
+                            values = resources[res]["values"];
+                            valArray = [];
+                            for (v in values) {
+                                if (values.hasOwnProperty(v))
+                                    valArray.push(values[v])
+                            }
+                            $scope.apns = valArray;
+                            break;
+                        case "8":
+                            $scope.cid = resources[res]["value"];
+                            break;
+                        case "9":
+                            $scope.smnc = resources[res]["value"];
+                            break;
+                        case "10":
+                            $scope.smcc = resources[res]["value"];
+                            break;
+                        default:
+                            console.warn("unknown resource entry! %s:%s", res, resources["res"]);
+                            break;
+                    }
+                }
+            }
+        };
+
+        var makeGET = function (url, cb) {
+            var http = new XMLHttpRequest();
+            http.open("GET", url);
+            http.onreadystatechange = function (event) {
+                var target = event.currentTarget;
+                if (target.readyState === 4) {
+                    // console.log("got response:", xhr);
+                    if (target.status === 200) {
+                        cb(target.responseText);
+                    } else {
+                        console.log("Something went wrong because of response code: 200 != ", xhr.status);
+                        console.log(target);
+                    }
+                }
+            };
+            http.send();
+        };
+
+        $scope.getClientURL = function (client) {
+            return $location.protocol() + "://" + $location.host() + ":" + $location.port() + "/.well-known/" + client;
+        };
+
+        // ---------------------------------------------------
+
+        // get client list
+        $scope.getClientList();
+
+        // set event to get client list updates
+        $scope.observeClientList();
+    })
+</script>
+</html>

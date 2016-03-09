@@ -20,7 +20,6 @@ package eu.rethink.lhcb.client;
 
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import eu.rethink.lhcb.client.objects.Device;
-import eu.rethink.lhcb.client.objects.ExtendedDevice;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.californium.LeshanClientBuilder;
 import org.eclipse.leshan.client.object.Server;
@@ -35,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Random;
 
 import static org.eclipse.leshan.LwM2mId.*;
 import static org.eclipse.leshan.client.object.Security.noSec;
@@ -69,17 +69,17 @@ public class LHCBClient {
         // set dummy Device
         initializer.setClassForObject(3, Device.class);
         initializer.setClassForObject(4, ConnectivityMonitor.class);
-        initializer.setInstancesForObject(3000, new ExtendedDevice());
+        //initializer.setInstancesForObject(3000, new ExtendedDevice());
 
         String serverURI = String.format("coap://%s:%s", serverHost, serverPort);
 
         initializer.setInstancesForObject(SECURITY, noSec(serverURI, 123));
         initializer.setInstancesForObject(SERVER, new Server(123, 30, BindingMode.U, false));
 
-        List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING, 3000); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
+        List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
 
         // Create client
-        LeshanClientBuilder builder = new LeshanClientBuilder("Last Hop Connectivity Broker - Client Module");
+        LeshanClientBuilder builder = new LeshanClientBuilder(String.valueOf(new Random().nextInt(Integer.MAX_VALUE)));
         //builder.setLocalAddress(localAddress, localPort);
         //builder.setLocalSecureAddress(secureLocalAddress, secureLocalPort);
         builder.setObjects(enablers);

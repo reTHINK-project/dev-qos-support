@@ -18,24 +18,15 @@
 
 package eu.rethink.lhcb.broker.servlet;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
-import org.eclipse.leshan.LinkObject;
 import org.eclipse.leshan.ResponseCode;
-import org.eclipse.leshan.core.model.LwM2mModel;
-import org.eclipse.leshan.core.model.ObjectModel;
-import org.eclipse.leshan.core.model.ResourceModel;
-import org.eclipse.leshan.core.node.LwM2mNodeVisitor;
-import org.eclipse.leshan.core.node.LwM2mObject;
-import org.eclipse.leshan.core.node.LwM2mObjectInstance;
-import org.eclipse.leshan.core.node.LwM2mResource;
 import org.eclipse.leshan.core.request.ReadRequest;
 import org.eclipse.leshan.core.response.ReadResponse;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.eclipse.leshan.server.client.Client;
-import org.eclipse.leshan.server.client.ClientRegistryListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +35,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * Http Servlet that is supposed to handle any request to /.well-known/*
@@ -56,10 +48,6 @@ public class WellKnownServlet extends HttpServlet {
 
     private static final String WELLKNOWN_PREFIX = "/.well-known";
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private BiMap<String, Client> nameClientMap = HashBiMap.create();
-
-    private static final int EXTENDED_MODEL_ID = 3000;
-    private static final int DEVICE_ID_RESOURCE_ID = 0;
 
     /**
      * Creates a new WellKnownServlet that translates requests to /well-known/*
@@ -69,90 +57,6 @@ public class WellKnownServlet extends HttpServlet {
      */
     public WellKnownServlet(LeshanServer server) {
         this.server = server;
-        server.getClientRegistry().addListener(new ClientRegistryListener() {
-            @Override
-            public void registered(Client client) {
-                LOG.info("Client registered: " + client);
-                analyzeClient(client);
-            }
-
-            @Override
-            public void updated(Client client) {
-                LOG.info("Client updated: " + client);
-                removeClient(client);
-                analyzeClient(client);
-            }
-
-            @Override
-            public void unregistered(Client client) {
-                LOG.info("Client unregistered: " + client);
-                removeClient(client);
-            }
-        });
-    }
-
-    /**
-     * Analyze the provided client if it is a LHCB Client and extract its device ID
-     *
-     * @param client - newly registered/updated client
-     */
-    private void analyzeClient(final Client client) {
-        //LOG.debug("analyzing client: " + client);
-
-        // check object links
-        boolean foundExtended = false;
-        for (LinkObject linkObject : client.getObjectLinks()) {
-            //LOG.debug(String.format("checking link:\n%s", gson.toJson(linkObject)));
-            String[] urlParts = linkObject.getUrl().split("/");
-            //LOG.debug("urlParts: " + gson.toJson(urlParts));
-
-            if (urlParts.length > 0 && EXTENDED_MODEL_ID == Integer.valueOf(urlParts[1])) {
-                // found extended device model id, making this client a lhcb client
-                foundExtended = true;
-                break;
-            }
-        }
-
-        if (foundExtended) {
-            // custom lhcb model was found, now extract device ID
-            ReadRequest rr = new ReadRequest(EXTENDED_MODEL_ID, 0);
-            try {
-                ReadResponse response = server.send(client, rr);
-                if (response.getCode() == ResponseCode.CONTENT) {
-                    response.getContent().accept(new LwM2mNodeVisitor() {
-                        @Override
-                        public void visit(LwM2mObject object) {
-                            LOG.warn("object visit: " + object + " (this should not happen)");
-                        }
-
-                        @Override
-                        public void visit(LwM2mObjectInstance instance) {
-                            // extract information
-                            LwM2mResource resource = instance.getResource(DEVICE_ID_RESOURCE_ID);
-                            String deviceId = (String) resource.getValue();
-                            nameClientMap.put(deviceId, client);
-                        }
-
-                        @Override
-                        public void visit(LwM2mResource resource) {
-                            LOG.warn("resource visit: " + resource + " (this should not happen)");
-                        }
-                    });
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
-     * Remove the recently disconnected client from the internal map
-     *
-     * @param client
-     */
-    private void removeClient(Client client) {
-        //LOG.debug("removing client: " + client);
-        nameClientMap.inverse().remove(client);
     }
 
     @Override
@@ -171,14 +75,14 @@ public class WellKnownServlet extends HttpServlet {
         String[] pathParts = path.length() > 1 ? path.substring(1).split(path, '/') : new String[0];
 
         //LOG.debug("pathParts: " + gson.toJson(pathParts));
-        String deviceId;
+        String endpoint;
         String responseText;
         int responseCode;
 
         if (pathParts.length > 0) {
-            deviceId = pathParts[0];
+            endpoint = pathParts[0];
 
-            Client client = nameClientMap.get(deviceId);
+            Client client = server.getClientRegistry().get(endpoint);
             if (client != null) {
                 try {
                     // get connectivity monitoring instance
@@ -187,40 +91,9 @@ public class WellKnownServlet extends HttpServlet {
                     if (response.getCode().equals(ResponseCode.CONTENT)) {
                         responseCode = HttpServletResponse.SC_OK;
 
-                        // get models from folder
-                        LwM2mModel objectModels = server.getModelProvider().getObjectModel(client);
-                        ObjectModel objectModel = objectModels.getObjectModel(4);
-                        //LOG.debug("objectModel: " + gson.toJson(objectModel));
-                        Map<Integer, ResourceModel> modelResources = objectModel.resources;
-                        JsonObject json = gson.toJsonTree(response).getAsJsonObject();
-                        JsonObject content = json.getAsJsonObject("content");
-                        content.remove("id");
-                        content.addProperty("name", objectModel.name);
+                        JsonObject content = gson.toJsonTree(response.getContent()).getAsJsonObject();
                         JsonObject resources = content.getAsJsonObject("resources");
-                        List<String> removeList = new LinkedList<>();
-                        Map<String, JsonElement> addMap = new LinkedHashMap<>();
-                        for (Map.Entry<String, JsonElement> entry : resources.entrySet()) {
-                            JsonObject resource = entry.getValue().getAsJsonObject();
-                            if (resource.has("values")) {
-                                JsonObject values = resource.getAsJsonObject("values");
-                                JsonArray valueSet = new JsonArray();
-                                for (Map.Entry<String, JsonElement> value : values.entrySet()) {
-                                    valueSet.add(value.getValue());
-                                }
-                                addMap.put(modelResources.get(Integer.valueOf(entry.getKey())).name, valueSet);
-                            } else {
-                                addMap.put(modelResources.get(Integer.valueOf(entry.getKey())).name, resource.get("value"));
-                            }
-                            resource.remove("type");
-                            resource.remove("id");
-                            removeList.add(entry.getKey());
-                        }
-                        for (String s : removeList) {
-                            resources.remove(s);
-                        }
-                        for (Map.Entry<String, JsonElement> entry : addMap.entrySet()) {
-                            resources.add(entry.getKey(), entry.getValue());
-                        }
+
                         responseText = gson.toJson(resources);
                     } else {
                         responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
@@ -233,12 +106,23 @@ public class WellKnownServlet extends HttpServlet {
                 }
             } else {
                 responseCode = HttpServletResponse.SC_NOT_FOUND;
-                responseText = "Unable to find client with device ID " + deviceId;
+                responseText = "Unable to find client " + endpoint;
             }
 
         } else {
-            responseCode = HttpServletResponse.SC_BAD_REQUEST;
-            responseText = "Please provide one of the following device IDs: " + nameClientMap.keySet();
+            //responseCode = HttpServletResponse.SC_BAD_REQUEST;
+            //responseText = "Please provide one of the following device IDs: " + nameClientMap.keySet();
+            // TODO: might change this so you need to clarify that you want a list, e.g. /.well-known/list
+            responseCode = HttpServletResponse.SC_OK;
+            Collection<Client> clients = server.getClientRegistry().allClients();
+            Iterator<Client> iterator = clients.iterator();
+            String[] endpoints = new String[clients.size()];
+            int i = 0;
+            while (iterator.hasNext()) {
+                Client next = iterator.next();
+                endpoints[i++] = next.getEndpoint();
+            }
+            responseText = gson.toJson(endpoints);
         }
 
         //LOG.debug("returning response: " + responseText);

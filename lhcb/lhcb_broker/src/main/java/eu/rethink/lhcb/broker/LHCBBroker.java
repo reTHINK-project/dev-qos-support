@@ -19,10 +19,11 @@
 package eu.rethink.lhcb.broker;
 
 import eu.rethink.lhcb.broker.provider.CustomModelProvider;
+import eu.rethink.lhcb.broker.servlet.EventServlet;
 import eu.rethink.lhcb.broker.servlet.WellKnownServlet;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.leshan.server.californium.LeshanServerBuilder;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.slf4j.Logger;
@@ -58,9 +59,20 @@ public class LHCBBroker {
 
         // create HTTP server
         server = new Server(httpPort);
-        ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
+
+        WebAppContext root = new WebAppContext();
+        root.setContextPath("/");
+        root.setResourceBase(LHCBBroker.class.getClassLoader().getResource("webapp").toExternalForm());
+        //root.setParentLoaderPriority(true);
+        server.setHandler(root);
+
+        //ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
         ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(leshanServer));
-        servletContextHandler.addServlet(servletHolder, "/.well-known/*");
+        root.addServlet(servletHolder, "/.well-known/*");
+
+        ServletHolder eventHolder = new ServletHolder(new EventServlet(leshanServer));
+        root.addServlet(eventHolder, "/event/*");
+
         try {
             LOG.info("Server should be available at: " + server.getURI());
             LOG.info("Starting server...");

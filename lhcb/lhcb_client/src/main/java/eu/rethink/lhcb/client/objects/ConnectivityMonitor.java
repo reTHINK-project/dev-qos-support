@@ -21,6 +21,8 @@ package eu.rethink.lhcb.client.objects;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -133,6 +135,8 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             network). Range (0...999).
             As specified in TS [3GPP 23.003].
     */
+    private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitor.class);
+
 
     private static final Random r = new Random();
     private static final String routeCmd = "route -n";
@@ -141,79 +145,62 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private Map<Integer, String> ips = new HashMap<>();
     private Map<Integer, String> routerIps = new HashMap<>();
 
+    private int sleepTime = 2000;
+
     public ConnectivityMonitor() {
-        ips = getIPs();
-        routerIps = getGatewayIPs();
-        // keep changing linkQuality to test observing values
-        // FIXME: thread deactivated for debugging purposes
-        //new Thread(new Runnable() {
-        //    @Override
-        //    public void run() {
-        //        while (!Thread.interrupted()) {
-        //            linkQuality = r.nextInt(256);
-        //            try {
-        //                fireResourcesChange(3);
-        //            } catch (Exception e) {
-        //                //e.printStackTrace();
-        //            }
-        //            try {
-        //                Thread.sleep(1000);
-        //            } catch (InterruptedException e) {
-        //                //e.printStackTrace();
-        //            }
-        //        }
-        //    }
-        //}).start();
+        startUpdating();
+    }
+
+    @Override
+    public ReadResponse read(int resourceid) {
+        switch (resourceid) {
+            case 0: // current network bearer
+                return ReadResponse.success(resourceid, 41); // Ethernet
+            case 1: // network bearers
+                Map<Integer, Long> map = new HashMap<>(1);
+                map.put(0, (long) 41);
+                return ReadResponse.success(resourceid, map, ResourceModel.Type.INTEGER);
+            case 2: // signal strength
+                return ReadResponse.success(resourceid, 110);
+            case 3: // link quality
+                return ReadResponse.success(resourceid, linkQuality);
+            case 4: // ip addresses
+                return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
+            case 5: // router ip
+                return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
+            case 6: // link utilization
+                // TODO implementation
+            case 7: // APN
+                // TODO implementation
+            case 8: // Cell ID
+                // TODO implementation
+            case 9: // SMNC
+                // TODO implementation
+            case 10: // SMCC
+                // TODO implementation
+            default:
+                return super.read(resourceid);
+        }
+    }
+
+    private void startUpdating() {
+        LOG.debug("Start updating resources");
+
+        linkQualityThread.start();
 
         // update ip list
-        // FIXME: thread deactivated for debugging purposes
-        //new Thread(new Runnable() {
-        //    @Override
-        //    public void run() {
-        //        while (!Thread.interrupted()) {
-        //            Map<Integer, String> newIps = getIPs();
-        //            if (!newIps.equals(ips)) {
-        //                ips = newIps;
-        //                try {
-        //                    fireResourcesChange(4);
-        //                } catch (Exception e) {
-        //                    //e.printStackTrace();
-        //                }
-        //            }
-        //
-        //            try {
-        //                Thread.sleep(1000);
-        //            } catch (InterruptedException e) {
-        //                //e.printStackTrace();
-        //            }
-        //        }
-        //    }
-        //}).start();
+        ipThread.start();
 
         // update gateway IPs
-        // FIXME: thread deactivated for debugging purposes
-        //new Thread(new Runnable() {
-        //    @Override
-        //    public void run() {
-        //        while (!Thread.interrupted()) {
-        //            Map<Integer, String> newGatewayIPs = getGatewayIPs();
-        //            if (!newGatewayIPs.equals(routerIps)) {
-        //                routerIps = newGatewayIPs;
-        //                try {
-        //                    fireResourcesChange(5);
-        //                } catch (Exception e) {
-        //                    //e.printStackTrace();
-        //                }
-        //            }
-        //
-        //            try {
-        //                Thread.sleep(1000);
-        //            } catch (InterruptedException e) {
-        //                //e.printStackTrace();
-        //            }
-        //        }
-        //    }
-        //}).start();
+        gatewayThread.start();
+    }
+
+    private void stopUpdating() {
+        LOG.debug("Stop updating resources");
+
+        linkQualityThread.interrupt();
+        ipThread.interrupt();
+        gatewayThread.interrupt();
     }
 
     /**
@@ -277,35 +264,68 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return ips;
     }
 
-    @Override
-    public ReadResponse read(int resourceid) {
-        switch (resourceid) {
-            case 0: // current network bearer
-                return ReadResponse.success(resourceid, 41); // Ethernet
-            case 1: // network bearers
-                Map<Integer, Long> map = new HashMap<>(1);
-                map.put(0, (long) 41);
-                return ReadResponse.success(resourceid, map, ResourceModel.Type.INTEGER);
-            case 2: // signal strength
-                return ReadResponse.success(resourceid, 110);
-            case 3: // link quality
-                return ReadResponse.success(resourceid, linkQuality);
-            case 4: // ip addresses
-                return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
-            case 5: // router ip
-                return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
-            case 6: // link utilization
-                // TODO implementation
-            case 7: // APN
-                // TODO implementation
-            case 8: // Cell ID
-                // TODO implementation
-            case 9: // SMNC
-                // TODO implementation
-            case 10: // SMCC
-                // TODO implementation
-            default:
-                return super.read(resourceid);
+    private Thread linkQualityThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (!Thread.interrupted()) {
+                linkQuality = r.nextInt(256);
+                try {
+                    fireResourcesChange(3);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                }
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
         }
-    }
+    });
+
+    private Thread ipThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (!Thread.interrupted()) {
+                Map<Integer, String> newIps = getIPs();
+                if (!newIps.equals(ips)) {
+                    ips = newIps;
+                    try {
+                        fireResourcesChange(4);
+                    } catch (Exception e) {
+                        //e.printStackTrace();
+                    }
+                }
+
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
+        }
+    });
+
+    private Thread gatewayThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (!Thread.interrupted()) {
+                Map<Integer, String> newGatewayIPs = getGatewayIPs();
+                if (!newGatewayIPs.equals(routerIps)) {
+                    routerIps = newGatewayIPs;
+                    try {
+                        fireResourcesChange(5);
+                    } catch (Exception e) {
+                        //e.printStackTrace();
+                    }
+                }
+
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
+        }
+    });
 }
