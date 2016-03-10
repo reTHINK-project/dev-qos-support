@@ -36,9 +36,9 @@ TODO  : provide the configuration instructions for the redis database.
   * CLIENTNAME : an identifier of the client using the webrtc appl. this parameter is just stored in redis database for statistical information
   
 #Installation
-https://github.com/reTHINK-project/dev-qos-support.git
-cd dev-qos-support/broker/BrokerServer
-docker build -t rethink/broker .  
-docker run --name redis -p 6379:6379 -d redis  
-docker run --name broker -p 8080:8080 --link redis:redis -d rethink/broker
+`git clone https://github.com/reTHINK-project/dev-qos-support.git`  
+`cd dev-qos-support/broker/BrokerServer`  
+`docker build -t rethink/broker .  `  
+`docker run --name redis -p 6379:6379 -d redis  `  
+`docker run --name broker -p 8080:8080 --link redis:redis -d rethink/broker`  
 
