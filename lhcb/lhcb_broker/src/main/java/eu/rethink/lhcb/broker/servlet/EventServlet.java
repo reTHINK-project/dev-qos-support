@@ -66,7 +66,6 @@ public class EventServlet extends EventSourceServlet {
 
     private Set<Event> events = new ConcurrentHashSet<>();
 
-
     private final ObservationRegistryListener observationRegistryListener = new ObservationRegistryListener() {
 
         @Override
@@ -106,7 +105,7 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void updated(Client clientUpdated) {
-            sendNotify();
+            //sendNotify();
         }
 
         @Override
@@ -130,7 +129,12 @@ public class EventServlet extends EventSourceServlet {
         for (Event e : events) {
             if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint))) {
                 LOG.debug("to event endpoint: {}", e.getEndpoint());
-                e.sendEvent(event, data);
+                try {
+                    e.sendEvent(event, data);
+                } catch (IllegalStateException e1) {
+                    e1.printStackTrace();
+                    e.onClose();
+                }
             }
         }
     }
@@ -139,9 +143,19 @@ public class EventServlet extends EventSourceServlet {
     @Override
     protected EventSource newEventSource(HttpServletRequest req) {
         LOG.debug("newEventSource: {}", req);
-        String endpoint = req.getParameter(QUERY_PARAM_ENDPOINT);
-        LOG.debug("extracted endpoint: {}", endpoint);
-        return new Event(endpoint);
+
+        String endpointParam = req.getParameter(QUERY_PARAM_ENDPOINT);
+
+        LOG.debug("extracted endpoint parameter: {}", endpointParam);
+
+        if (endpointParam == null)
+            return new Event(null);
+
+        String[] splitParam = endpointParam.split("/");
+        if (splitParam.length > 1)
+            return new Event(splitParam[0], Integer.parseInt(splitParam[1]));
+        else
+            return new Event(splitParam[0]);
     }
 
     private String[] getEndpoints() {
@@ -153,16 +167,22 @@ public class EventServlet extends EventSourceServlet {
             Client next = iterator.next();
             endpoints[i++] = next.getEndpoint();
         }
-        LOG.debug("generated endpoint list: {}", gson.toJson(endpoints));
+        //LOG.debug("generated endpoint list: {}", gson.toJson(endpoints));
         return endpoints;
     }
 
     private class Event implements EventSource {
         private String endpoint;
+        private int resourceId = -1;
         private Emitter emitter;
 
         public Event(String endpoint) {
             this.endpoint = endpoint;
+        }
+
+        public Event(String endpoint, int resourceId) {
+            this.endpoint = endpoint;
+            this.resourceId = resourceId;
         }
 
         @Override
@@ -179,7 +199,12 @@ public class EventServlet extends EventSourceServlet {
                     Client client = server.getClientRegistry().get(endpoint);
                     if (client != null) {
                         LOG.debug("got client for endpoint {}: {}", endpoint, client);
-                        ObserveResponse response = server.send(client, new ObserveRequest(4, 0));
+                        ObserveResponse response;
+                        if (resourceId > -1) {
+                            response = server.send(client, new ObserveRequest(4, 0, resourceId));
+                        } else {
+                            response = server.send(client, new ObserveRequest(4, 0));
+                        }
                         LOG.debug("got response: {}", response);
                     } else {
                         LOG.warn("tried to observe endpoint {} but it doesn't exist!", endpoint);
@@ -194,14 +219,17 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void onClose() {
-            //cleanCoapListener(endpoint);
             events.remove(this);
+            LOG.debug("onClose. endpoint: " + endpoint);
+            String resourceId = this.resourceId > -1 ? "/" + this.resourceId : "";
+            server.getObservationRegistry().cancelObservation(server.getClientRegistry().get(endpoint), "/4/0" + resourceId);
         }
 
         public void sendEvent(String event, String data) {
             try {
                 emitter.event(event, data);
             } catch (IOException e) {
+                //e.printStackTrace();
                 onClose();
             }
         }
