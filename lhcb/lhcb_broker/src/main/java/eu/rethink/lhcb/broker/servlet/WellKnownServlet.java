@@ -20,9 +20,12 @@ package eu.rethink.lhcb.broker.servlet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.leshan.ResponseCode;
+import org.eclipse.leshan.core.node.LwM2mNodeVisitor;
+import org.eclipse.leshan.core.node.LwM2mObject;
+import org.eclipse.leshan.core.node.LwM2mObjectInstance;
+import org.eclipse.leshan.core.node.LwM2mResource;
 import org.eclipse.leshan.core.request.ReadRequest;
 import org.eclipse.leshan.core.response.ReadResponse;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
@@ -72,11 +75,11 @@ public class WellKnownServlet extends HttpServlet {
         //LOG.debug("path length: " + path.length());
 
         // split path up
-        String[] pathParts = path.length() > 1 ? path.substring(1).split(path, '/') : new String[0];
+        String[] pathParts = path.length() > 1 ? path.substring(1).split("/") : new String[0];
 
         //LOG.debug("pathParts: " + gson.toJson(pathParts));
         String endpoint;
-        String responseText;
+        final String[] responseText = new String[1];
         int responseCode;
 
         if (pathParts.length > 0) {
@@ -85,28 +88,54 @@ public class WellKnownServlet extends HttpServlet {
             Client client = server.getClientRegistry().get(endpoint);
             if (client != null) {
                 try {
+                    ReadResponse response;
+
                     // get connectivity monitoring instance
-                    ReadResponse response = server.send(client, new ReadRequest(4, 0));
+                    if (pathParts.length > 1) {
+                        int resourceId = Integer.parseInt(pathParts[1]);
+                        response = server.send(client, new ReadRequest(4, 0, resourceId));
+                    } else {
+                        response = server.send(client, new ReadRequest(4, 0));
+                    }
 
                     if (response.getCode().equals(ResponseCode.CONTENT)) {
                         responseCode = HttpServletResponse.SC_OK;
 
-                        JsonObject content = gson.toJsonTree(response.getContent()).getAsJsonObject();
-                        JsonObject resources = content.getAsJsonObject("resources");
+                        response.getContent().accept(new LwM2mNodeVisitor() {
+                            @Override
+                            public void visit(LwM2mObject object) {
+                                // requested all instances
+                                responseText[0] = gson.toJson(object);
+                                LOG.debug("visit object: {}", responseText[0]);
+                            }
 
-                        responseText = gson.toJson(resources);
+                            @Override
+                            public void visit(LwM2mObjectInstance instance) {
+                                // requested complete instance
+                                responseText[0] = gson.toJson(instance);
+                                LOG.debug("visit instance: {}", responseText[0]);
+
+                            }
+
+                            @Override
+                            public void visit(LwM2mResource resource) {
+                                // requested specific resource
+                                responseText[0] = gson.toJson(resource);
+                                LOG.debug("visit resource: {}", responseText[0]);
+                            }
+                        });
                     } else {
                         responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-                        responseText = gson.toJson(response);
+                        responseText[0] = gson.toJson(response);
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     responseCode = HttpServletResponse.SC_GATEWAY_TIMEOUT;
-                    responseText = e.getMessage();
+                    responseText[0] = e.getMessage();
                 }
             } else {
                 responseCode = HttpServletResponse.SC_NOT_FOUND;
-                responseText = "Unable to find client " + endpoint;
+                responseText[0] = "Unable to find client " + endpoint;
             }
 
         } else {
@@ -122,17 +151,17 @@ public class WellKnownServlet extends HttpServlet {
                 Client next = iterator.next();
                 endpoints[i++] = next.getEndpoint();
             }
-            responseText = gson.toJson(endpoints);
+            responseText[0] = gson.toJson(endpoints);
         }
 
         //LOG.debug("returning response: " + responseText);
         if (responseCode == HttpServletResponse.SC_OK) {
             resp.setStatus(responseCode);
             resp.addHeader("Access-Control-Allow-Origin", "*");
-            resp.getWriter().write(responseText);
+            resp.getWriter().write(responseText[0]);
             resp.getWriter().flush();
         } else {
-            resp.sendError(responseCode, responseText);
+            resp.sendError(responseCode, responseText[0]);
         }
 
     }
