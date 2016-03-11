@@ -1,4 +1,33 @@
-//var BROKERURL = "https://172.16.52.56:8181";
+/**
+ ******************************************************************************
+ * @b Project : reThink
+ *
+ * @b Sub-project : QoS Broker
+ *
+ ******************************************************************************
+ *
+ *                       Copyright (C) 2016 Orange Labs
+ *                       Orange Labs - PROPRIETARY
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. *
+ ******************************************************************************
+ *
+ * @brief WebRTC example app
+ *
+ * @file
+ *
+ */
+
 var BROKERURL = "https://10.193.5.93:8181";
 
 // RTCSERVICEURL : IP Address (port) of the server that will host the webrtc app
