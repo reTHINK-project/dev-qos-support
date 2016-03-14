@@ -6,4 +6,3 @@ RUN	    npm install
 
 
 EXPOSE	8080
-
