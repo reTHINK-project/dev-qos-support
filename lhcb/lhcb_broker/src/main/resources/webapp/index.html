@@ -176,91 +176,33 @@
 
         </table>
 
-        <h3>device URL: {{getClientURL(client)}}</h3>
+        <h3>device URL: <a target="_blank" href="{{getClientURL(client)}}">{{getClientURL(client)}}</a></h3>
     </div>
 </div>
 <p>---------------------------</p>
 <button ng-click="debug = !debug" ng-init="debug = false">Toggle Debug Info</button>
 <div ng-show="debug">
-    <pre>{{response | json}}</pre>
-    <table border="1" style="border: 1px">
+    <table>
         <tr>
-            <td align="right">Network Bearer</td>
+            <td>Last GET response</td>
             <td>
-                {{bearer}}
+                <pre>{{response}}</pre>
             </td>
         </tr>
-        <tr>
-            <td align="right">Available Network Bearer</td>
-            <td>
-                {{bearers}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Radio Signal Strength</td>
-            <td>
-                {{rss}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Link Quality</td>
-            <td>
-                {{lq}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">IP Addresses</td>
-            <td>
-                {{ips}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Router IP Addresse</td>
-            <td>
-                {{rips}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Link Utilization</td>
-            <td>
-                {{lu}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">APN</td>
-            <td>
-                {{apns}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Cell ID</td>
-            <td>
-                {{cid}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Serving Mobile Network Code</td>
-            <td>
-                {{smnc}}
-            </td>
-        </tr>
-        <tr>
-            <td align="right">Serving Mobile Country Code</td>
-            <td>
-                {{smcc}}
-            </td>
-        </tr>
-
     </table>
+
 
 </div>
 </body>
 <script>
     var app = angular.module("lhcbgui", []);
-    app.controller("lhcbCtrl", function ($scope, $location, $window) {
+    app.controller("lhcbCtrl", function ($scope, $location) {
         var clientObserveSource;
         var resourceObserves = {};
 
+        /**
+         * Get array of clients from .../.well-known/
+         */
         $scope.getClientList = function () {
             var callback = function (response) {
                 updateClientList(response);
@@ -269,7 +211,9 @@
             makeGET("/.well-known", callback);
         };
 
-
+        /**
+         * Starts observing list of currently connected clients.
+         */
         $scope.observeClientList = function () {
             var clientSource = new EventSource("event");
             var clientNotCallback = function (msg) {
@@ -279,6 +223,10 @@
 
             clientSource.addEventListener("CLIENTS", clientNotCallback, false);
         };
+
+        /**
+         * Removes all observes on resources
+         */
         $scope.clearResourceObserves = function () {
             console.log("clearResourceObserves");
             for (var ro in resourceObserves) {
@@ -293,6 +241,10 @@
             resourceObserves = {};
         };
 
+        /**
+         * Updates GUI when client is selected. Clears all current observes and gets current client connectivity state.
+         * @param {string} client - client endpoint
+         */
         $scope.onClientSelect = function (client) {
             $scope.cancelObserveClient();
             $scope.clearResourceObserves();
@@ -301,9 +253,12 @@
             }
         };
 
+        /**
+         * Get current connectivity state of client.
+         * @param {string} client - client endpoint
+         */
         $scope.getClientConnectivity = function (client) {
             var callback = function (response) {
-                console.log("got response for get request:", response);
                 $scope.$apply(function () {
                     var resources = JSON.parse(response)["resources"];
                     analyzeResources(resources);
@@ -313,19 +268,19 @@
             makeGET("/.well-known/" + client, callback);
         };
 
-
+        /**
+         * Observe a client. Observes the Connectivity Monitoring instance of the client.
+         * @param {string} client - client endpoint
+         */
         $scope.observeClient = function (client) {
             console.log("observeClient:", client);
             $scope.clearResourceObserves();
             if (!!window.EventSource) {
                 clientObserveSource = new EventSource('event?ep=' + client);
-                console.log("notifySource:", clientObserveSource);
                 var notificationCallback = function (msg) {
                     var content = JSON.parse(msg.data);
-                    console.log("got notification for", content["ep"]);
+                    console.log("got notification for %s:", content["ep"], content);
                     $scope.$apply(function () {
-//                        $scope.clearResourceObserves();
-                        $scope.response = content;
                         var resources = content["val"]["resources"];
                         analyzeResources(resources);
                     });
@@ -336,6 +291,9 @@
             }
         };
 
+        /**
+         * Tries to cancel an observe on the current client.
+         */
         $scope.cancelObserveClient = function () {
             try {
                 clientObserveSource.close();
@@ -343,16 +301,18 @@
             }
         };
 
+        /**
+         * Observe a resource of a client's connectivity monitoring instance.
+         * @param {string} client - client endpoint
+         * @param {number} resourceId - ID of the resource you want to observe
+         */
         $scope.observeResource = function (client, resourceId) {
             console.log("observeResource:", client, resourceId);
             if (!!window.EventSource) {
                 var resourceObserveSource = new EventSource('event?ep=' + client + "/" + resourceId);
-                console.log("notifySource:", resourceObserveSource);
                 var notificationCallback = function (msg) {
-                    console.log("got notification:", msg);
                     var content = JSON.parse(msg.data);
-                    console.log("got notification for", content["ep"]);
-                    console.log("content:", content);
+                    console.log("got notification for %s:", content["ep"], content);
                     $scope.$apply(function () {
                         var resource = content["val"];
                         analyzeResource(resource);
@@ -365,19 +325,27 @@
             }
         };
 
+        /**
+         * Cancel observe on a resource
+         * @param {number} resourceId - ID of the resource that is being observed.
+         */
         $scope.cancelObserveResource = function (resourceId) {
             console.log("cancelObserveResource:", resourceId);
             resourceObserves[resourceId].close();
             delete resourceObserves[resourceId];
         };
 
+        /**
+         * Updates the selector of available clients.
+         * @param {...string} clients - list of available clients
+         */
         var updateClientList = function (clients) {
             if (!(clients instanceof Object)) {
                 clients = JSON.parse(clients);
             }
-            console.log("got client list: ", clients);
+            console.log("updateClientList:", clients);
             var client = $scope.client;
-            console.log("is %s in %s? -> %s", client, clients, clients.indexOf(client) > -1);
+//            console.log("is %s in %s? -> %s", client, clients, clients.indexOf(client) > -1);
             if (client && clients.indexOf(client) === -1) {
                 console.warn("Client " + client + " disconnected from the server!");
             }
@@ -386,12 +354,16 @@
             })
         };
 
+        /**
+         * Analyze json of resources and update the GUI accordingly.
+         * @param {string | Object} resources - JSON of resources
+         */
         var analyzeResources = function (resources) {
+            console.log("analyzeResources:", resources);
             if (!(resources instanceof Object)) {
                 resources = JSON.parse(resources);
             }
 
-//            console.log("analyzing resources:", resources);
             for (var resource in resources) {
                 if (resources.hasOwnProperty(resource) && resources[resource] instanceof Object)
                     analyzeResource(resources[resource]);
@@ -399,8 +371,12 @@
 
         };
 
+        /**
+         * Update analyze a resource and update the appropriate variable in scope.
+         * @param {Object} resource - resource that might have changed
+         */
         var analyzeResource = function (resource) {
-//            console.log("analyzing:", resource);
+            console.log("analyzeResource:", resource);
             var values = {};
             var valArray = [];
             var v = "";
@@ -463,13 +439,21 @@
 
         };
 
+        /**
+         * Make a GET request on the given URL and call the callback when done.
+         * @param url - URL to GET
+         * @param cb - callback that is fired when a response is received
+         */
         var makeGET = function (url, cb) {
+            console.log("makeGET:", url);
             var http = new XMLHttpRequest();
             http.open("GET", url);
             http.onreadystatechange = function (event) {
                 var target = event.currentTarget;
                 if (target.readyState === 4) {
-                    // console.log("got response:", xhr);
+                    $scope.$apply(function () {
+                        $scope.response = target.response;
+                    });
                     if (target.status === 200) {
                         cb(target.responseText);
                     } else {
@@ -481,11 +465,19 @@
             http.send();
         };
 
+        /**
+         * Returns a generated client URL based on the client endpoint.
+         * @param {string} client - client endpoint
+         * @returns {string} generated client URL
+         */
         $scope.getClientURL = function (client) {
+            console.log("getClientURL:", client);
             return $location.protocol() + "://" + $location.host() + ":" + $location.port() + "/.well-known/" + client;
         };
 
-        // ---------------------------------------------------
+        // ----------------------- //
+        // INITIALIZATION COMPLETE //
+        // ----------------------- //
 
         // get client list
         $scope.getClientList();
