@@ -83,7 +83,7 @@ public class EventServlet extends EventSourceServlet {
                         .append(observation.getPath().toString()).append("\",\"val\":").append(gson.toJson(value))
                         .append("}").toString();
 
-                sendEvent(EVENT_NOTIFICATION, data, client.getEndpoint());
+                sendEvent(EVENT_NOTIFICATION, data, client.getEndpoint(), observation.getPath().getResourceId());
             }
         }
 
@@ -95,7 +95,7 @@ public class EventServlet extends EventSourceServlet {
 
     private final ClientRegistryListener clientRegistryListener = new ClientRegistryListener() {
         private void sendNotify() {
-            sendEvent(EVENT_CLIENT_LIST, gson.toJson(getEndpoints()), null);
+            sendEvent(EVENT_CLIENT_LIST, gson.toJson(getEndpoints()), null, null);
         }
 
         @Override
@@ -122,12 +122,12 @@ public class EventServlet extends EventSourceServlet {
 
     }
 
-    private synchronized void sendEvent(String event, String data, String endpoint) {
+    private synchronized void sendEvent(String event, String data, String endpoint, Integer resourceId) {
         LOG.debug("Dispatching {} event from endpoint {}", event, endpoint);
 
 
         for (Event e : events) {
-            if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint))) {
+            if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint) && resourceId != null ? resourceId == e.getResourceId() : e.getResourceId() == -1)) {
                 LOG.debug("to event endpoint: {}", e.getEndpoint());
                 try {
                     e.sendEvent(event, data);
@@ -236,6 +236,10 @@ public class EventServlet extends EventSourceServlet {
 
         public String getEndpoint() {
             return endpoint;
+        }
+
+        public int getResourceId() {
+            return resourceId;
         }
     }
 }

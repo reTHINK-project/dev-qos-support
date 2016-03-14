@@ -35,16 +35,22 @@
     <div ng-show="client"
          style="font-family: monospace; background-color: lightgrey; display: inline-block; border: 2px solid; padding: 30px">
         <h2>Connectivity Monitoring
-            <button ng-click="observeClient(client)">observe instance</button>
+            <button ng-init="observers[99] = false"
+                    ng-click="observers[99] ? cancelObserveClient() : observeClient(client); observers[99] = !observers[99]">
+                {{observers[99] ? "&#9899" : "&#9898"}}
+            </button>
         </h2>
-        <table border="1" style="border: 1px">
+        <table border="1" style="border: 1px" ng-model="observers">
             <tr>
                 <td align="right">Network Bearer</td>
                 <td>
                     {{bearer}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 0)">observe</button>
+                    <button ng-init="observers[0] = false"
+                            ng-click="observers[0] ? cancelObserveResource(0) : observeResource(client, 0); observers[0] = !observers[0]">
+                        {{observers[0] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -53,7 +59,10 @@
                     <a ng-repeat="b in bearers">{{b}}<br ng-if="$index < (bearers.length + 1)"></a>
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 1)">observe</button>
+                    <button ng-init="observers[1] = false"
+                            ng-click="observers[1] ? cancelObserveResource(1) : observeResource(client, 1); observers[1] = !observers[1]">
+                        {{observers[1] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -62,7 +71,10 @@
                     {{rss}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 2)">observe</button>
+                    <button ng-init="observers[2] = false"
+                            ng-click="observers[2] ? cancelObserveResource(2) : observeResource(client, 2); observers[2] = !observers[2]">
+                        {{observers[2] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -71,7 +83,10 @@
                     {{lq}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 3)">observe</button>
+                    <button ng-init="observers[3] = false"
+                            ng-click="observers[3] ? cancelObserveResource(3) : observeResource(client, 3); observers[3] = !observers[3]">
+                        {{observers[3] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -80,7 +95,10 @@
                     <a ng-repeat="ip in ips">{{ip}}<br ng-if="$index < (ips.length + 1)"></a>
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 4)">observe</button>
+                    <button ng-init="observers[4] = false"
+                            ng-click="observers[4] ? cancelObserveResource(4) : observeResource(client, 4); observers[4] = !observers[4]">
+                        {{observers[4] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -89,7 +107,10 @@
                     <a ng-repeat="ip in rips">{{ip}}<br ng-if="$index < (rips.length + 1)"></a>
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 5)">observe</button>
+                    <button ng-init="observers[5] = false"
+                            ng-click="observers[5] ? cancelObserveResource(5) : observeResource(client, 5); observers[5] = !observers[5]">
+                        {{observers[5] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -98,7 +119,10 @@
                     {{lu}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 6)">observe</button>
+                    <button ng-init="observers[6] = false"
+                            ng-click="observers[6] ? cancelObserveResource(6) : observeResource(client, 6); observers[6] = !observers[6]">
+                        {{observers[6] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -107,7 +131,10 @@
                     <a ng-repeat="apn in apns">{{apn}}<br ng-if="$index < (apns.length + 1)"></a>
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 7)">observe</button>
+                    <button ng-init="observers[7] = false"
+                            ng-click="observers[7] ? cancelObserveResource(7) : observeResource(client, 7); observers[7] = !observers[7]">
+                        {{observers[7] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -116,7 +143,10 @@
                     {{cid}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 8)">observe</button>
+                    <button ng-init="observers[8] = false"
+                            ng-click="observers[8] ? cancelObserveResource(8) : observeResource(client, 8); observers[8] = !observers[8]">
+                        {{observers[8] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -125,7 +155,10 @@
                     {{smnc}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 9)">observe</button>
+                    <button ng-init="observers[9] = false"
+                            ng-click="observers[9] ? cancelObserveResource(9) : observeResource(client, 9); observers[9] = !observers[9]">
+                        {{observers[9] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
             <tr>
@@ -134,7 +167,10 @@
                     {{smcc}}
                 </td>
                 <td>
-                    <button ng-click="observeResource(client, 10)">observe</button>
+                    <button ng-init="observers[10] = false"
+                            ng-click="observers[10] ? cancelObserveResource(10) : observeResource(client, 10); observers[10] = !observers[10]">
+                        {{observers[10] ? "&#9899" : "&#9898"}}
+                    </button>
                 </td>
             </tr>
 
@@ -223,7 +259,7 @@
     var app = angular.module("lhcbgui", []);
     app.controller("lhcbCtrl", function ($scope, $location, $window) {
         var clientObserveSource;
-        var resourceObserveSource;
+        var resourceObserves = {};
 
         $scope.getClientList = function () {
             var callback = function (response) {
@@ -243,16 +279,25 @@
 
             clientSource.addEventListener("CLIENTS", clientNotCallback, false);
         };
+        $scope.clearResourceObserves = function () {
+            console.log("clearResourceObserves");
+            for (var ro in resourceObserves) {
+                resourceObserves[ro].close();
+                delete resourceObserves[ro];
+            }
+
+            for (var entry in $scope.observers) {
+                $scope.observers[entry] = false;
+            }
+
+            resourceObserves = {};
+        };
 
         $scope.onClientSelect = function (client) {
-            if (clientObserveSource)
-                clientObserveSource.close();
-            if (resourceObserveSource)
-                resourceObserveSource.close();
-
+            $scope.cancelObserveClient();
+            $scope.clearResourceObserves();
             if (client) {
                 $scope.getClientConnectivity(client);
-//                $scope.observeClient(client);
             }
         };
 
@@ -271,6 +316,7 @@
 
         $scope.observeClient = function (client) {
             console.log("observeClient:", client);
+            $scope.clearResourceObserves();
             if (!!window.EventSource) {
                 clientObserveSource = new EventSource('event?ep=' + client);
                 console.log("notifySource:", clientObserveSource);
@@ -278,6 +324,7 @@
                     var content = JSON.parse(msg.data);
                     console.log("got notification for", content["ep"]);
                     $scope.$apply(function () {
+//                        $scope.clearResourceObserves();
                         $scope.response = content;
                         var resources = content["val"]["resources"];
                         analyzeResources(resources);
@@ -289,12 +336,20 @@
             }
         };
 
+        $scope.cancelObserveClient = function () {
+            try {
+                clientObserveSource.close();
+            } catch (e) {
+            }
+        };
+
         $scope.observeResource = function (client, resourceId) {
             console.log("observeResource:", client, resourceId);
             if (!!window.EventSource) {
-                resourceObserveSource = new EventSource('event?ep=' + client + "/" + resourceId);
+                var resourceObserveSource = new EventSource('event?ep=' + client + "/" + resourceId);
                 console.log("notifySource:", resourceObserveSource);
                 var notificationCallback = function (msg) {
+                    console.log("got notification:", msg);
                     var content = JSON.parse(msg.data);
                     console.log("got notification for", content["ep"]);
                     console.log("content:", content);
@@ -304,9 +359,16 @@
                     });
                 };
                 resourceObserveSource.addEventListener('NOTIFICATION', notificationCallback, false);
+                resourceObserves[resourceId] = resourceObserveSource;
             } else {
                 // Result to xhr polling :(
             }
+        };
+
+        $scope.cancelObserveResource = function (resourceId) {
+            console.log("cancelObserveResource:", resourceId);
+            resourceObserves[resourceId].close();
+            delete resourceObserves[resourceId];
         };
 
         var updateClientList = function (clients) {
