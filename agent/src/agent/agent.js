@@ -48,6 +48,12 @@ export default class Agent {
     this.maxProbes = 10;
     this.showStateTimeout = 10 * 1000;
 
+    /*
+     * The list of TURN Agents we try to probe.
+     * This list is pre-defined on development state. However,
+     * that list needs to be retrieved from the broker in the final development.
+     *
+     */
     this.turnAgentList = [
       "127.0.0.1:20000",
       "127.0.0.1:20001",
@@ -60,7 +66,7 @@ export default class Agent {
       "127.0.0.1:20008"
     ];
 
-    /**
+    /*
      * the overall object which stores that lastest performance values
      * of the probed Turn Agents
      *
@@ -73,6 +79,7 @@ export default class Agent {
      * }
      */
     this.turnProbes = {};
+
   } // end constructor
 
 
