@@ -6,3 +6,5 @@ gen
 
 /lhcb/lhcb_broker/target
 /lhcb/lhcb_client/target
+
+broker/BrokerServer/sslkeys/*.pem

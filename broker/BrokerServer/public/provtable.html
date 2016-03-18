@@ -1,0 +1,73 @@
+<img  class="button" src="img/ic_refresh_black_24px.svg"/ ng-click="csplist.reload()">
+<select ng-model="csplist.filteringUnit">
+    <option value="MB">MB</option>
+    <option value="GB">GB</option>
+    <option value="TB">TB</option>
+    <option value="PB">PB</option>
+</select>
+<table class="basic-grey">
+    <tr>
+        <th class="button" ng-class="{activefilter: csplist.order === 'csp' || csplist.order === '-csp',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('csp')">CSP
+            <img ng-show="csplist.order === 'csp' || csplist.order === '-csp'" src="img/ic_filter_list_black_24px.svg"/>
+        </th>
+        <th class="button" ng-class="{activefilter: csplist.order === 'audiopercent' || csplist.order === '-audiopercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('audiopercent')">Audio (used/quota)
+            <img ng-show="csplist.order === 'audiopercent' || csplist.order === '-audiopercent'" src="img/ic_filter_list_black_24px.svg"/>
+        </th>
+        <th class="button" ng-class="{activefilter: csplist.order === 'videopercent' || csplist.order === '-videopercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('videopercent')">Video (used/quota)
+            <img ng-show="csplist.order === 'videopercent' || csplist.order === '-videopercent'" src="img/ic_filter_list_black_24px.svg"/>
+        </th>
+        <th class="button" ng-class="{activefilter: csplist.order === 'datapercent' || csplist.order === '-datapercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('datapercent')">Data (used/quota)
+            <img ng-show="csplist.order === 'datapercent' || csplist.order === '-datapercent'" src="img/ic_filter_list_black_24px.svg"/>
+        </th>
+    </tr>
+    <tr ng-repeat="csp in csplist.provs | orderBy:csplist.order">
+        <td><img  style="float:left" class="button" ng-click="csplist.deleteCSP(csp.csp)" src="img/ic_delete_black_18px.svg"/>
+            <img  style="float:left" class="button" ng-click="csplist.showEdit(csp)" src="img/ic_mode_edit_black_18px.svg"/>
+            {{ csp.csp | cspfilter }}
+        </td>
+        <td ng-class="{red: csp.audiopercent > 90 }">
+            <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.audiohasrisen"/>
+            <span>{{ csp.audioconsumed || 0  | bytes:csplist.filteringUnit}} / {{ csp.audioQuota  | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
+        </td>
+        <td  ng-class="{red: csp.videopercent > 90 }">
+            <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.videohasrisen"/>
+            <span>{{ csp.videoconsumed || 0 | bytes:csplist.filteringUnit}} / {{ csp.videoQuota  |  bytes:csplist.filteringUnit}} {{csplist.filteringUnit}}</span>
+        </td>
+        <td ng-class="{red: csp.datapercent > 90 }">
+            <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.datahasrisen"/>
+            <span>{{ csp.dataconsumed || 0  | bytes:csplist.filteringUnit}} / {{ csp.dataQuota | bytes:csplist.filteringUnit }} {{csplist.filteringUnit}}</span>
+        </td>
+    </tr>
+</table>
+<div class="hidder" ng-show="csplist.edit"></div>
+<form class="edit" ng-submit="csplist.submitChanges(csplist.cspToEdit)" ng-show="csplist.edit">
+    <table class="basic-grey">
+    <tr>
+        <th>CSP</th>
+        <th>Audio</th>
+        <th>Video</th>
+        <th>Data</th>
+    </tr>
+    <tr>
+        <td>
+            {{ csplist.cspToEdit.csp | cspfilter }}
+        </td>
+        <td>
+            {{ csplist.cspToEdit.audioconsumed || 0  | bytes:csplist.filteringUnit}} /
+            <input string-to-number ng-model="csplist.cspToEdit.audioQuota" type="number" min="0" value="{{ csplist.cspToEdit.audioQuota | bytes:csplist.filteringUnit}}"> GB</input>
+        </td>
+        <td>
+            {{ csplist.cspToEdit.videoconsumed || 0 | bytes:csplist.filteringUnit}} /
+            <input string-to-number ng-model="csplist.cspToEdit.videoQuota" type="number" min="0" value="{{ csplist.cspToEdit.videoQuota | bytes:csplist.filteringUnit}}"> GB</input>
+        </td>
+        <td>
+            {{ csplist.cspToEdit.dataconsumed || 0  | bytes:csplist.filteringUnit}} /
+            <input string-to-number ng-model="csplist.cspToEdit.dataQuota" type="number" min="0" value="{{ csplist.cspToEdit.dataQuota | bytes:csplist.filteringUnit }}"> GB</input>
+        </td>
+    </tr>
+    </table>
+    <div class="edit-buttons">
+        <input type="submit" value="save"/>
+        <img class="button" ng-click="csplist.hideEdit()" src="img/ic_clear_black_24px.svg" ng-show="csplist.edit"/>
+    </div>
+</form>

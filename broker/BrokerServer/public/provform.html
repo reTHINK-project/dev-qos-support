@@ -1,0 +1,30 @@
+<section class="basic-grey">
+    <h1>Provisioning
+        <span>Please fill all the texts in the fields.</span>
+    </h1>
+    <form action="provRequest" method="post">
+        <label class="provRequest-El">
+            <span>Your Service Name :</span>
+            <input id="name" type="text" name="servicename" required="required" placeholder="Your Full Service Name" />
+        </label>
+
+        <label class="provRequest-El">
+            <span>Audio :</span>
+            <input id="audio" type="number" name="audio" min="0" value="0">GB</input>
+        </label >
+
+        <label class="provRequest-El">
+            <span>Video :</span>
+            <input id="video" type="number" name="video" min="0" value="0">GB</input>
+        </label>
+
+        <label class="provRequest-El">
+            <span>Data :</span>
+            <input id="qdata" type="number" min="0" name="qdata" value="0">GB</input>
+        </label>
+
+         <label class="provRequest-El-send">
+            <input type="submit" class="button" value="Send" />
+        </label>
+    </form>
+</selection
