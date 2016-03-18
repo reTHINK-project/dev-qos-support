@@ -231,14 +231,19 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             List<Integer> bearers = new LinkedList<>();
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
-                //LOG.debug("getIPs: checking iface (up? {}): {} ", iface.isUp(), gson.toJson(iface));
                 if (iface.isUp()) {
+                    //LOG.debug("getIPs: checking iface {} ", gson.toJson(iface));
+
+                    // only consider interface that are up
+                    // try to get bearer kind
                     for (String ifaceName : IFaceNameToId.keySet()) {
                         if (iface.getDisplayName().startsWith(ifaceName)) {
                             int bearer = IFaceNameToId.get(ifaceName);
                             bearers.add(bearer);
                         }
                     }
+
+                    // get IPs
                     Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
                     while (inetAddresses.hasMoreElements()) {
                         ips.put(i++, inetAddresses.nextElement().getHostAddress());
@@ -246,13 +251,13 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                 }
             }
 
-            LOG.debug("bearers: {}", gson.toJson(bearers));
+            //LOG.debug("bearers: {}", gson.toJson(bearers));
 
             // check if current bearer is 1st element in bearers
             if (bearers.size() == 0) {
-                if (currentBearer != 0) {
-                    currentBearer = 0;
-                    LOG.debug("no current bearer, set to 0");
+                if (currentBearer != null) {
+                    currentBearer = null;
+                    LOG.debug("no current bearer, set to null");
                     try {
                         fireResourcesChange(0);
                     } catch (Exception e) {
