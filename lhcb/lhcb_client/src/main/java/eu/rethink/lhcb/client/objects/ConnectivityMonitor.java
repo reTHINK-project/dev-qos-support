@@ -18,6 +18,8 @@
 
 package eu.rethink.lhcb.client.objects;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
@@ -145,7 +147,18 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private Map<Integer, String> ips = new HashMap<>();
     private Map<Integer, String> routerIps = new HashMap<>();
 
+    private Integer currentBearer = 0;
+    private Map<Integer, Long> availableBearers = new HashMap<>();
     private int sleepTime = 2000;
+
+    private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+    private static Map<String, Integer> IFaceNameToId = new HashMap<>();
+
+    static {
+        IFaceNameToId.put("eth", 41);
+        IFaceNameToId.put("wlan", 21);
+    }
 
     public ConnectivityMonitor() {
         startUpdating();
@@ -155,11 +168,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     public ReadResponse read(int resourceid) {
         switch (resourceid) {
             case 0: // current network bearer
-                return ReadResponse.success(resourceid, 41); // Ethernet
+                return ReadResponse.success(resourceid, currentBearer); // Ethernet
             case 1: // network bearers
-                Map<Integer, Long> map = new HashMap<>(1);
-                map.put(0, (long) 41);
-                return ReadResponse.success(resourceid, map, ResourceModel.Type.INTEGER);
+                //Map<Integer, Long> map = new HashMap<>();
+                //map.put(0, (long) 41);
+                return ReadResponse.success(resourceid, availableBearers, ResourceModel.Type.INTEGER);
             case 2: // signal strength
                 return ReadResponse.success(resourceid, 110);
             case 3: // link quality
@@ -203,6 +216,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         gatewayThread.interrupt();
     }
 
+
     /**
      * Creates a map of available host addresses for this machine.
      * They key in the map is an index starting from 0
@@ -214,11 +228,62 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             int i = 0;
+            List<Integer> bearers = new LinkedList<>();
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
-                Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
-                while (inetAddresses.hasMoreElements()) {
-                    ips.put(i++, inetAddresses.nextElement().getHostAddress());
+                //LOG.debug("getIPs: checking iface (up? {}): {} ", iface.isUp(), gson.toJson(iface));
+                if (iface.isUp()) {
+                    for (String ifaceName : IFaceNameToId.keySet()) {
+                        if (iface.getDisplayName().startsWith(ifaceName)) {
+                            int bearer = IFaceNameToId.get(ifaceName);
+                            bearers.add(bearer);
+                        }
+                    }
+                    Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
+                    while (inetAddresses.hasMoreElements()) {
+                        ips.put(i++, inetAddresses.nextElement().getHostAddress());
+                    }
+                }
+            }
+
+            LOG.debug("bearers: {}", gson.toJson(bearers));
+
+            // check if current bearer is 1st element in bearers
+            if (bearers.size() == 0) {
+                if (currentBearer != 0) {
+                    currentBearer = 0;
+                    LOG.debug("no current bearer, set to 0");
+                    try {
+                        fireResourcesChange(0);
+                    } catch (Exception e) {
+                        //e.printStackTrace();
+                    }
+                }
+            } else if (!bearers.get(0).equals(currentBearer)) {
+                currentBearer = bearers.get(0);
+
+                LOG.debug("current bearer has changed, set to {}", currentBearer);
+                try {
+                    fireResourcesChange(0);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                }
+            }
+
+            // make bearers to availableBearers
+            Map<Integer, Long> map = new HashMap<>();
+            int j = 0;
+            for (Integer bearer : bearers) {
+                map.put(j++, (long) bearer);
+            }
+
+            if (!map.equals(availableBearers)) {
+                availableBearers = map;
+                LOG.debug("available bearers have changed, set to {}", availableBearers);
+                try {
+                    fireResourcesChange(1);
+                } catch (Exception e) {
+                    //e.printStackTrace();
                 }
             }
         } catch (SocketException e) {
