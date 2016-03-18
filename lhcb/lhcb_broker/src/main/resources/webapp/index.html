@@ -35,6 +35,7 @@
     <div ng-show="client"
          style="font-family: monospace; background-color: lightgrey; display: inline-block; border: 2px solid; padding: 30px">
         <h2>Connectivity Monitoring
+            <button ng-click="getClientConnectivity(client)">GET</button>
             <button ng-init="observers[99] = false"
                     ng-click="observers[99] ? cancelObserveClient() : observeClient(client); observers[99] = !observers[99]">
                 {{observers[99] ? "&#9899" : "&#9898"}}
@@ -56,7 +57,7 @@
             <tr>
                 <td align="right">Available Network Bearer</td>
                 <td>
-                    <a ng-repeat="b in bearers">{{b}}<br ng-if="$index < (bearers.length + 1)"></a>
+                    {{bearers}}
                 </td>
                 <td>
                     <button ng-init="observers[1] = false"
@@ -187,6 +188,18 @@
             <td>Last GET response</td>
             <td>
                 <pre>{{response}}</pre>
+            </td>
+        </tr>
+        <tr>
+            <td>Bearers</td>
+            <td>
+                <pre>{{bearers}}</pre>
+            </td>
+        </tr>
+        <tr>
+            <td>IPs</td>
+            <td>
+                <pre>{{ips}}</pre>
             </td>
         </tr>
     </table>
