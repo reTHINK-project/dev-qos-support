@@ -27,9 +27,9 @@
  * @file
  *
  */
-
 (function(){
     var app = angular.module('dashboard', ['cspFilters']);
+    var currentFilteringUnit = "GB";
 
     /**
      * return the consumption percentage given the consumption and the quota
@@ -119,7 +119,7 @@
         dashboard.oldcons = [];
         dashboard.cspToEdit = null;
         dashboard.edit = false;
-        dashboard.filteringUnit = "GB";
+        dashboard.filteringUnit = currentFilteringUnit;
         //Getting basic csp infos (quotas, name)
         $http.get('./getAllCspInfo').success(function(data){
             dashboard.provs = data;
@@ -201,7 +201,9 @@
     	return function(bytes, unit, precision) {
             if (bytes===0 ) return '0';
     		if ( isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
-    		if (typeof precision === 'undefined') precision = 1;
+    		if (typeof precision === 'undefined') {
+                    precision = 1;
+                }
     		var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
     			number = Math.floor(Math.log(bytes) / Math.log(1024));
     		return (bytes / Math.pow(1024, units.indexOf(unit))).toFixed(precision);
@@ -211,14 +213,15 @@
     //Directive used to convert string to numbers in <input type="number"
     //@See : https://docs.angularjs.org/error/ngModel/numfmt
     app.directive('stringToNumber', function() {
+      var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'];
       return {
         require: 'ngModel',
         link: function(scope, element, attrs, ngModel) {
           ngModel.$parsers.push(function(value) {
-            return '' + value;
+            return '' + (value* Math.pow(1024, units.indexOf(scope.csplist.filteringUnit)));
           });
           ngModel.$formatters.push(function(value) {
-            return  (value / Math.pow(1024, 3));
+            return value/ Math.pow(1024, units.indexOf(scope.csplist.filteringUnit))
           });
         }
       };

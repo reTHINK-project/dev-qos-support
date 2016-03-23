@@ -30,8 +30,8 @@
 'use strict';
 var fs = require('fs');
 var config = JSON.parse(fs.readFileSync('./app/config.json','utf8'));
-var DB_HOST =  process.env.REDIS_PORT_6379_TCP_ADDR || config.DB_HOST;
-var DB_PORT =  process.env.REDIS_PORT_6379_TCP_PORT || config.DB_PORT;
+var DB_HOST = config.DB_HOST;
+var DB_PORT = config.DB_PORT;
 var SERVICE_PORT = config.SERVICE_PORT;
 var url = require('url'),
     redis = require("redis"),
@@ -68,6 +68,8 @@ var auth = function (req, res, next) {
   }
 };
 
+// Start the HTTP server
+console.log('Listen on ' + SERVICE_PORT);
 server.listen(SERVICE_PORT);
 
 //docRouter(app, "https://127.0.0.1:8181");
@@ -85,7 +87,3 @@ require('./app/routes.js')(app, auth, dao);
 
 // Pattern subscription
 dao.psubscribe("turn/*/*/realm/*/user/*/allocation/*/traffic");
-
-// Start the HTTP server
-console.log('Listen on 8181') ;
-//http_server.listen(8181);

@@ -121,5 +121,10 @@ input[type="text"], input[type="number"], .basic-grey textarea, .basic-grey sele
 
 .trendup{
     width:30px;
-    float:left;
+
+    vertical-align:middle;
+}
+
+.verticalAlign{
+    vertical-align:middle;
 }
