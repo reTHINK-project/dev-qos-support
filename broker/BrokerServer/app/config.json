@@ -1,6 +1,6 @@
 {
-    "DB_PORT": 6379,
-    "DB_HOST": "127.0.0.1",
+    "DB_PORT": <redis_PORT>,
+    "DB_HOST": "<redis_IP>",
     "SERVICE_PORT":"8181",
     "LOGIN":"admin",
     "PASSWD":"reThink"
