@@ -2,6 +2,7 @@ FROM node:onbuild
 
 # Get Sources
 # Clean node_modules
-RUN	    npm install
+WORKDIR /usr/src/app
 
+ENTRYPOINT ["./launchBroker.sh"]
 
