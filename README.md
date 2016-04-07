@@ -17,7 +17,7 @@ From the redis folder:
 
 `cd ../broker/BrokerServer`  
 
-At this stage you have to provide the good server certificates in order to work, with the FQDN of the server where it is installed (see [README](BrokerServer/sslkeys/README.md))  
+At this stage you have to provide the good server certificates in order to work, with the FQDN of the server where it is installed (see [README](broker/BrokerServer/sslkeys/README.md))  
 `docker build -t rethink/broker .  `  
 `docker run --name broker -d rethink/broker -dbIP IP-REDIS  -dbP PORT-REDIS `  
 
