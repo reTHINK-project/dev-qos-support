@@ -34,14 +34,13 @@ then
 fi
 if [ "$REDIS_PORT" = "" ]
 then
-   REDIS_PORT=6379 
+   REDIS_PORT=6379
 fi
 
 
 echo configuring broker to use REDIS database on IP $REDIS_IP and port $REDIS_PORT
-sed -i "s/<redis_IP>/"$REDIS_IP"/" /usr/src/app/app/config.json
-sed -i "s/<redis_PORT>/"$REDIS_PORT"/" /usr/src/app/app/config.json
+sed -i "s/<redis_IP>/"$REDIS_IP"/" ./app/config.json
+sed -i "s/<redis_PORT>/"$REDIS_PORT"/" ./app/config.json
 
 npm install
 npm start
-
