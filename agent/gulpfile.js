@@ -39,6 +39,7 @@ gulp.task('build', function() {
   exclude('http').
   exclude('process').
   exclude('body-parser').
+  exclude('telnet-client').
   transform(babel);
 
   function rebundle() {
@@ -65,7 +66,7 @@ gulp.task('dist', ['build'], shell.task([
 
 gulp.task('start', ['dist'], shell.task([
   'sleep 1',
-  'cd dist && node qosbroker-agent.js ' + util.env.address + ' ' + util.env.port + ' ' + util.env.type
+  'cd dist && node qosbroker-agent.js ' + util.env.broker
 ]));
 
 gulp.task('test', ['stoptest', 'dist'], shell.task([

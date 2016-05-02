@@ -8,3 +8,5 @@ gen
 /lhcb/lhcb_client/target
 
 broker/BrokerServer/sslkeys/*.pem
+
+.jsbeautifyrc
