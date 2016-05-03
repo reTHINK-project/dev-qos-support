@@ -29,7 +29,6 @@ export default class Agent {
 			this._ownId = this._generateUUID();
 
 			console.log("Running Agent: " + this._ownId);
-			console.log("The Broker URL: " + this.brokerUrl);
 
 			// Global vars
 			this.servingAreaName = "XY";
@@ -101,7 +100,6 @@ export default class Agent {
 	 */
 	_runWatchDogs() {
 
-			console.log("_runWatchDogs called");
 			// Re-Register at Broker with the given timer
 			setTimeout(() => {
 				this.isRegisteredAtBroker = false;
@@ -219,7 +217,6 @@ export default class Agent {
 			switch (what) {
 			case "registerResponse":
 				ret = this._validate("isJSON", content.body);
-				console.log("Validating JSON returned: " + ret);
 				ret = ret && (content.getCode() == 200);
 				break;
 

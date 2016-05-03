@@ -1,12 +1,6 @@
 var Telnet = require('telnet-client');
-//var telnetConfig = require('../config/turnserver-connector.json');
-// //
-var params = {
-	"host": "127.0.0.1",
-	"port": 5766,
-	"shellPrompt": "> ",
-	"timeout": 1500
-}
+var fs = require('fs');
+var configurationFile = '../config/turnserver-connector.json';
 
 export default class TURNConnector {
 
@@ -15,9 +9,15 @@ export default class TURNConnector {
 	 */
 	constructor() {
 
-		// The Telnet connection
+		// Read configuration and store the JSON
+		this.configuration = JSON.parse(
+	    fs.readFileSync(configurationFile);
+		);
+
+		// Initialize the Telnet connection
 		this.connection = new Telnet();
 
+		// Start Connecting
 		this._connect();
 
 	}
@@ -26,15 +26,19 @@ export default class TURNConnector {
 	 * Connect to the TURN Service via Telnet
 	 */
 	_connect() {
-		this.connection.connect(params)
+		try {
+		this.connection.connect(this.configuration)
 			.then(
 				(res) => {
-					console.log("Connection to turnservice established");
+					console.log("Connection to TURNservice established");
 				},
 				(err) => {
-					console.log("Connection to turnservice COULD NOT BE established");
+					console.log("Connection to TURNservice COULD NOT BE established");
 				}
 			);
+		} catch (error) {
+			console.log("Somthing failed while connecting to the given TURNservice " + configuration.host + ":" + configuration.port + ". " + e);
+		}
 	}
 
 	/**
@@ -64,7 +68,7 @@ export default class TURNConnector {
 	 * @return {int} the number of established sessions
 	 */
 	_parseResults(result) {
-		var matches = res.match(/Total sessions: (\d+)/);
+		var matches = result.match(/Total sessions: (\d+)/);
 		var total_sessions = matches[1];
 		return total_sessions;
 	}
