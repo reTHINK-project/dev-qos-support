@@ -37,15 +37,17 @@ export default class TURNConnector {
 			);
 	}
 
+	/**
+	 * Run the extraction of the established sessions
+	 * at the TURN service
+	 * @return {int} The number of established TURN sessions
+	 */
 	runProbe() {
 		return new Promise((resolve, reject) => {
 					this.connection.exec("ps")
 						.then((res) => {
-              console.log("RESULT FROM TURN SERVER: " + res);
-              var matches = res.match(/Total sessions: (\d+)/);
-          		var total_sessions = matches[1];
-              console.log("EXTRACTED TOTAL SESSIONS: " + total_sessions);
-							resolve(total_sessions);
+							var total_sessions = this._parseResults(res);
+              resolve(total_sessions);
 						})
 				},
 				(error) => {
@@ -53,6 +55,18 @@ export default class TURNConnector {
 					reject(error);
 				}
 			);
+	}
+
+	/**
+	 * Parse the console output and return the number of established
+	 * sessions.
+	 * @param {String} The content of the turn service output
+	 * @return {int} the number of established sessions
+	 */
+	_parseResults(result) {
+		var matches = res.match(/Total sessions: (\d+)/);
+		var total_sessions = matches[1];
+		return total_sessions;
 	}
 
 }
