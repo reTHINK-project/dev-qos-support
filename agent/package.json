@@ -2,14 +2,14 @@
   "name": "dev-qos-broker-agent",
   "version": "0.1.0",
   "description": "Feasible TURN Server Broker Agnet",
-  "main": "dist/qos-broker-agent.js",
+  "main": "qosbroker-agent.js",
   "scripts": {
     "init-setup": "npm init && npm install -g jspm karma-cli gulp-cli && npm install",
     "test": "karma start"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com:reTHINK-project/dev-qos-broker.git"
+    "url": "git+ssh://git@github.com:reTHINK-project/dev-qos-support.git"
   },
   "keywords": [
     "reThink",
@@ -21,7 +21,7 @@
   ],
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/reTHINK-project/dev-qos-broker/issues"
+    "url": "https://github.com/reTHINK-project/dev-qos-support/issues"
   },
   "homepage": "https://rethink-project.eu/",
   "devDependencies": {
