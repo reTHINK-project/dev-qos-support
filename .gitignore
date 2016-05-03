@@ -13,4 +13,6 @@ broker/BrokerServer/sslkeys/*.pem
 
 .jsbeautifyrc
 
-**/.vscode
+**/.vscode/**
+
+broker/BrokerServer/app/config.json
