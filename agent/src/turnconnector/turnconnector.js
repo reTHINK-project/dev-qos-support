@@ -18,11 +18,14 @@ export default class TURNConnector {
 		// The Telnet connection
 		this.connection = new Telnet();
 
-		this.connect();
+		this._connect();
 
 	}
 
-	connect() {
+	/**
+	 * Connect to the TURN Service via Telnet
+	 */
+	_connect() {
 		this.connection.connect(params)
 			.then(
 				(res) => {
@@ -50,10 +53,6 @@ export default class TURNConnector {
 					reject(error);
 				}
 			);
-	}
-
-	parseResult(result) {
-
 	}
 
 }
