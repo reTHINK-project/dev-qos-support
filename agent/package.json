@@ -55,7 +55,8 @@
     "websocket": "^1.0.22",
     "url": "^0.11.0",
     "plugin-manager": "^2.0.0",
-    "colors": "^1.1.2"
+    "colors": "^1.1.2",
+    "telnet-client": "^0.9.1"
   },
   "dependencies": {},
   "jspm": {

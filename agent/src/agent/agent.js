@@ -108,7 +108,7 @@ export default class Agent {
 
 			// Run the TURN Server probing
 			setInterval(() => {
-				console.log("Probing TURN service");
+				console.log("\n[TURN] Probing TURN service");
 				this._probeTurnServer();
 			}, 1500);
 		} // end runWatchDogs
@@ -125,7 +125,7 @@ export default class Agent {
 	_probeTurnServer() {
 		this.connector.runProbe()
 			.then((totalSessions) => {
-				console.log("The connected TURN Service has currently " + totalSessions + " total sessions.");
+				console.log("[TURN] The connected TURNservice has currently " + totalSessions + " sessions.");
 				return totalSessions;
 			})
 			.then((totalSessions) => {
@@ -133,7 +133,7 @@ export default class Agent {
 				return this._updateStatistics(totalSessions);
 			})
 			.then((res) => {
-				console.log("Successful update of current active Sessions of TURN service.");
+				console.log("[BROKER] Successful update of sessions of TURNservice.");
 			})
 			.catch(
 				(err) => {
@@ -157,16 +157,16 @@ export default class Agent {
 					}
         ).then(
 				(response) => {
-					console.log("Received Update Respose from Broker: " + response.body);
-					console.log("ResponseCode:" + response.getCode());
+					console.log("[BROKER] Received Update Respose from Broker: " + response.body);
+					console.log("[BROKER] ResponseCode:" + response.getCode());
 					if (response.getCode() == 200) {
 						resolve(response.body);
 					} else {
-						reject("No 200 while trying to update the session statistics. Response Code:" + response.getCode());
+						reject("[BROKER] No 200 while trying to update the session statistics. Response Code:" + response.getCode());
 					}
 				},
 				(err) => {
-					console.log("Error updating the turn sessios at the Broker " + JSON.stringify(err));
+					console.log("[BROKER] Error updating the turn sessios at the Broker " + JSON.stringify(err));
 					reject(err);
 				}
 			);
@@ -201,7 +201,7 @@ export default class Agent {
 						}
 					},
 					(err) => {
-						console.log("Error registering at the Broker " + JSON.stringify(err));
+						console.log("[BROKER] Error registering at the Broker " + JSON.stringify(err));
 						reject(false);
 					}
 				);
@@ -243,13 +243,10 @@ export default class Agent {
 	 * The initializing Function
 	 */
 	initialize() {
-			console.log("Using Broker URL: " + myProcess.argv[2]);
 			if (myProcess.argv[2]) {
 				this.brokerUrl = myProcess.argv[2];
+				console.log("[BROKER] Using Broker URL: " + this.brokerUrl);
 			}
-
-			//this.startREST();
-
 		} // end initialize
 
 	/**

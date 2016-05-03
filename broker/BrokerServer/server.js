@@ -38,13 +38,24 @@ var url = require('url'),
     dao = require("./app/dao")('redis',DB_PORT,DB_HOST),
     bodyParser = require('body-parser'),
     express = require('express'),
-    app = express(),
-    server = require('https').createServer({
+    app = express();
+
+/*
+ * Enable Body Parsing
+ */
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+/* Ignore HTTPS when we are testing...
+var server = require('https').createServer({
         key: fs.readFileSync('sslkeys/server-key.pem'),
         cert: fs.readFileSync('sslkeys/server-crt.pem'),
         ca: fs.readFileSync('sslkeys/ca-crt.pem'),
         },
         app);
+*/
+var server = require('http').createServer(app);
+
 // No const available in strict mode ? oO
 
 var basicAuth = require('basic-auth');

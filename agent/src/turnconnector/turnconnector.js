@@ -11,7 +11,7 @@ export default class TURNConnector {
 
 		// Read configuration and store the JSON
 		this.configuration = JSON.parse(
-	    fs.readFileSync(configurationFile);
+			fs.readFileSync(configurationFile)
 		);
 
 		// Initialize the Telnet connection
@@ -27,17 +27,17 @@ export default class TURNConnector {
 	 */
 	_connect() {
 		try {
-		this.connection.connect(this.configuration)
-			.then(
-				(res) => {
-					console.log("Connection to TURNservice established");
-				},
-				(err) => {
-					console.log("Connection to TURNservice COULD NOT BE established");
-				}
-			);
+			this.connection.connect(this.configuration)
+				.then(
+					(res) => {
+						console.log("[TURN] Connection to TURNservice (" + this.configuration.host + ":" + this.configuration.port + ") established.");
+					},
+					(err) => {
+						console.log("[TURN] Connection to TURNservice COULD NOT BE established");
+					}
+				);
 		} catch (error) {
-			console.log("Somthing failed while connecting to the given TURNservice " + configuration.host + ":" + configuration.port + ". " + e);
+			console.log("[TURN] Somthing failed while connecting to the given TURNservice " + this.configuration.host + ":" + this.configuration.port + ". " + e);
 		}
 	}
 
@@ -48,17 +48,17 @@ export default class TURNConnector {
 	 */
 	runProbe() {
 		return new Promise((resolve, reject) => {
-					this.connection.exec("ps")
-						.then((res) => {
-							var total_sessions = this._parseResults(res);
-              resolve(total_sessions);
-						})
-				},
-				(error) => {
-					console.log('promises reject:', error);
-					reject(error);
-				}
-			);
+				this.connection.exec("ps")
+					.then((res) => {
+						var total_sessions = this._parseResults(res);
+						resolve(total_sessions);
+					})
+			},
+			(error) => {
+				console.log('[TURN] promises reject:', error);
+				reject(error);
+			}
+		);
 	}
 
 	/**

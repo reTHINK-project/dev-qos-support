@@ -40,6 +40,7 @@ gulp.task('build', function() {
   exclude('process').
   exclude('body-parser').
   exclude('telnet-client').
+  exclude('fs').
   transform(babel);
 
   function rebundle() {

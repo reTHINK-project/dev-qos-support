@@ -77,7 +77,7 @@ module.exports = function(app, auth, dao) {
             res.json(reply);
             console.log('Returned Appropriate Turn and ClientId : ' + reply);
         })
-        .catch(function(error){ 
+        .catch(function(error){
             res.sendStatus(404);
         });
     });
@@ -218,4 +218,51 @@ module.exports = function(app, auth, dao) {
              res.sendStatus(200);
          });
      });
+
+     /**
+      * @api {post} /registerServiceLocation
+      * @apiName registerServiceLocation
+      * @apiGroup Broker REST requests
+      *
+      * @apiParam {String} agentId key in the database.
+      * @apiParam {String} servingArea An identifier where and what the cloud is serving in the database.
+      *
+      * @apiSuccess {int} return 200
+      */
+      app.post('/registerServiceLocation',function(req, res){;
+        console.log("C -> S: Received " + JSON.stringify(req.body));
+        dao.registerServiceLocation(req.body);
+        res.json(
+          {
+            "response": 200,
+            "agentId": req.body.agentId,
+            "servingArea": req.body.servingArea
+          }
+        );
+      });
+
+      /**
+       * @api {put} /updateServiceLocation
+       * @apiName updateServiceLocation
+       * @apiGroup Broker REST requests
+       *
+       * @apiParam {int} activeSessions The totalSessions which are currently running
+       * @apiParam {maxSessions} the maximum of available TURN Server Sessions
+       * @apiParam {String} agentId key in the database.
+       * @apiParam {String} servingArea An identifier where and what the cloud is serving in the database.
+       *
+       * @apiSuccess {int} return 200
+       */
+       app.put('/updateServiceLocation',function(req, res){;
+         console.log("C -> S: Received " + JSON.stringify(req.body));
+         dao.updateServiceLocation(req.body);
+         res.json(
+           {
+             "response": 200,
+             "agentId": req.body.agentId,
+             "servingArea": req.body.servingArea
+           }
+         );
+       });
+
 };
