@@ -3,7 +3,7 @@
 *.iml
 out
 gen
-
+**/dist
 /lhcb/lhcb_broker/target
 /lhcb/lhcb_client/target
 
