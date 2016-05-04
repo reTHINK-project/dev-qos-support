@@ -1,6 +1,6 @@
 var Telnet = require('telnet-client');
 var fs = require('fs');
-var configurationFile = '../config/turnserver-connector.json';
+var configurationFile = './config/turnserver-connector.json';
 
 export default class TURNConnector {
 

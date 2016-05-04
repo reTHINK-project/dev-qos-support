@@ -6,14 +6,13 @@
 // Imports
 var requestify = require('requestify');
 var express = require('express');
-var microtime = require('microtime');
 var http = require("http");
 var myProcess = require('process');
-//var colors = require('colors');
-var level = require('../log/level.json');
-var colors = require('colors/safe');
 
 var turnConnector = require('../turnconnector/turnconnector.js');
+
+var fs = require('fs');
+var configurationFile = './config/agent.json';
 
 export default class Agent {
 
@@ -22,19 +21,22 @@ export default class Agent {
 	 */
 	constructor() {
 
-			this.applicationLogLevel = level.Debug;
+			// Read configuration and store the JSON
+			this.configuration = JSON.parse(
+				fs.readFileSync(configurationFile)
+			);
 
 			this.turnUser = this._generateUUID();
 			this.turnPass = this._generateUUID();
-			this._ownId = this._generateUUID();
+			this._ownId = this.configuration.agentId;
 
 			console.log("Running Agent: " + this._ownId);
 
 			// Global vars
-			this.servingAreaName = "XY";
+			this.servingAreaName = this.configuration.servingArea;
 			this.isAccessAgent = true;
-			// TODO: Extract such information from a config file
-			this.brokerUrl = "";
+			this.brokerUrl = this.configuration.brokerUrl;
+
 			this.restApp = express();
 			this.restPort = 10000;
 			this.timers = [];
