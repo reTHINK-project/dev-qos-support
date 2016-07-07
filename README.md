@@ -27,7 +27,7 @@ To verify that it works, https://domain_name:port/dashboard.html
 `cd ../coturn`  
 From the broker/coturn folder:  
 `docker build -t rethink/coturn .`   
-`docker run -d -it --name="coturn" rethink/coturn -dbIP IP-REDIS -realm REALM`  
+`docker run -d -it --name="coturn" --net=host rethink/coturn -dbIP IP-REDIS -realm REALM`  
 
 
 
