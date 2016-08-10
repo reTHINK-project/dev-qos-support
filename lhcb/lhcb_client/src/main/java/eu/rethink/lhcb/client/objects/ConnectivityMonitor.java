@@ -160,7 +160,9 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
 
     static {
         IFaceNameToId.put("eth", 41);
+        IFaceNameToId.put("ens", 41);
         IFaceNameToId.put("wlan", 21);
+        IFaceNameToId.put("wls", 21);
     }
 
     private static String currentBearerName = null;
