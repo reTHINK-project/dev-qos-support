@@ -26,7 +26,9 @@ import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -144,6 +146,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private static final String routeCmd = "route -n";
 
     private int linkQuality = r.nextInt(256);
+    private int signalStrength = r.nextInt(256);
     private Map<Integer, String> ips = new HashMap<>();
     private Map<Integer, String> routerIps = new HashMap<>();
 
@@ -160,6 +163,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         IFaceNameToId.put("wlan", 21);
     }
 
+    private static String currentBearerName = null;
     public ConnectivityMonitor() {
         startUpdating();
     }
@@ -199,7 +203,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private void startUpdating() {
         LOG.debug("Start updating resources");
 
-        linkQualityThread.start();
+        iwconfigThread.start();
 
         // update ip list
         ipThread.start();
@@ -211,7 +215,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private void stopUpdating() {
         LOG.debug("Stop updating resources");
 
-        linkQualityThread.interrupt();
+        iwconfigThread.interrupt();
         ipThread.interrupt();
         gatewayThread.interrupt();
     }
@@ -239,6 +243,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                     for (String ifaceName : IFaceNameToId.keySet()) {
                         if (iface.getDisplayName().startsWith(ifaceName)) {
                             int bearer = IFaceNameToId.get(ifaceName);
+                            currentBearerName = iface.getDisplayName();
                             bearers.add(bearer);
                         }
                     }
@@ -334,7 +339,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return ips;
     }
 
-    private Thread linkQualityThread = new Thread(new Runnable() {
+    private Thread linkQualityThreadOld = new Thread(new Runnable() {
         @Override
         public void run() {
             while (!Thread.interrupted()) {
@@ -390,6 +395,48 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                     }
                 }
 
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
+        }
+    });
+
+    private Thread iwconfigThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            String line;
+            int i, j, k;
+            String linkQualityLabel = "Link Quality=";
+            String signalLevelLabel = "Signal level=";
+            while (!Thread.interrupted()) {
+                if (currentBearerName != null) {
+                    try {
+                        Process p = Runtime.getRuntime().exec("iwconfig " + currentBearerName);
+                        BufferedReader result = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                        while ((line = result.readLine()) != null) {
+                            i = line.indexOf(linkQualityLabel);
+                            j = line.indexOf(signalLevelLabel); // entry after link quality
+
+                            if (i != -1) {
+                                // we are in the correct line
+
+                                // get link quality
+                                String[] quality = line.substring(i + linkQualityLabel.length(), j - 1).trim().split("/");
+                                linkQuality = Math.round(Float.parseFloat(quality[0]) / Float.parseFloat(quality[1]));
+
+                                // get signal strength
+                                k = line.indexOf("dBm");
+                                signalStrength = Integer.parseInt(line.substring(j + signalLevelLabel.length(), k-1).trim());
+                            }
+
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 try {
                     Thread.sleep(sleepTime);
                 } catch (InterruptedException e) {
