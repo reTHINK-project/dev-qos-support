@@ -180,7 +180,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                 //map.put(0, (long) 41);
                 return ReadResponse.success(resourceid, availableBearers, ResourceModel.Type.INTEGER);
             case 2: // signal strength
-                return ReadResponse.success(resourceid, 110);
+                return ReadResponse.success(resourceid, signalStrength);
             case 3: // link quality
                 return ReadResponse.success(resourceid, linkQuality);
             case 4: // ip addresses
@@ -427,7 +427,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
 
                                 // get link quality
                                 String[] quality = line.substring(i + linkQualityLabel.length(), j - 1).trim().split("/");
-                                linkQuality = Math.round(Float.parseFloat(quality[0]) / Float.parseFloat(quality[1]));
+                                linkQuality = Math.round((Float.parseFloat(quality[0]) / Float.parseFloat(quality[1])) * 100);
 
                                 // get signal strength
                                 k = line.indexOf("dBm");
