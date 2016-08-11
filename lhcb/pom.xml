@@ -15,7 +15,7 @@
         <jetty.version>9.2.15.v20160210</jetty.version>
         <slf4j.api.version>[1.7.0, 1.8)</slf4j.api.version>
         <log4j.version>2.5</log4j.version>
-        <leshan.version>0.1.11-M8</leshan.version>
+        <leshan.version>0.1.11-M12</leshan.version>
         <lhcb.version>0.1.0</lhcb.version>
         <maven-assembly.version>2.6</maven-assembly.version>
         <maven-compiler.version>3.5.1</maven-compiler.version>

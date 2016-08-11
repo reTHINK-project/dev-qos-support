@@ -341,25 +341,6 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return ips;
     }
 
-    private Thread linkQualityThreadOld = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (!Thread.interrupted()) {
-                linkQuality = r.nextInt(256);
-                try {
-                    fireResourcesChange(3);
-                } catch (Exception e) {
-                    //e.printStackTrace();
-                }
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-        }
-    });
-
     private Thread ipThread = new Thread(new Runnable() {
         @Override
         public void run() {

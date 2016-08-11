@@ -19,6 +19,7 @@
 package eu.rethink.lhcb.client;
 
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
+import eu.rethink.lhcb.client.objects.ConnectivityMonitorDummy;
 import eu.rethink.lhcb.client.objects.Device;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.californium.LeshanClientBuilder;
@@ -47,6 +48,13 @@ public class LHCBClient {
     private String serverHost = "localhost";
     private int serverPort = 5683;
 
+    public void setUseDummy(boolean useDummy) {
+        this.useDummy = useDummy;
+    }
+
+    private boolean useDummy = false;
+
+
     public void setServerHost(String serverHost) {
         this.serverHost = serverHost;
     }
@@ -68,7 +76,11 @@ public class LHCBClient {
 
         // set dummy Device
         initializer.setClassForObject(3, Device.class);
-        initializer.setClassForObject(4, ConnectivityMonitor.class);
+        if (useDummy) {
+            initializer.setClassForObject(4, ConnectivityMonitorDummy.class);
+        } else {
+            initializer.setClassForObject(4, ConnectivityMonitor.class);
+        }
         //initializer.setInstancesForObject(3000, new ExtendedDevice());
 
         String serverURI = String.format("coap://%s:%s", serverHost, serverPort);
@@ -101,6 +113,9 @@ public class LHCBClient {
                 case "-port":
                     client.setServerPort(Integer.parseInt(args[++i]));
                     break;
+                case "-d":
+                case "-dummy":
+                    client.setUseDummy(true);
                 default:
                     i++;
             }

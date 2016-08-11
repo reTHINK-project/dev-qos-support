@@ -24,12 +24,14 @@ import org.eclipse.jetty.servlets.EventSource;
 import org.eclipse.jetty.servlets.EventSourceServlet;
 import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.eclipse.leshan.core.node.LwM2mNode;
+import org.eclipse.leshan.core.node.TimestampedLwM2mNode;
 import org.eclipse.leshan.core.observation.Observation;
 import org.eclipse.leshan.core.request.ObserveRequest;
 import org.eclipse.leshan.core.response.ObserveResponse;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.eclipse.leshan.server.client.Client;
 import org.eclipse.leshan.server.client.ClientRegistryListener;
+import org.eclipse.leshan.server.client.ClientUpdate;
 import org.eclipse.leshan.server.observation.ObservationRegistryListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -73,14 +76,14 @@ public class EventServlet extends EventSourceServlet {
         }
 
         @Override
-        public void newValue(Observation observation, LwM2mNode value) {
+        public void newValue(Observation observation, LwM2mNode lwM2mNode, List<TimestampedLwM2mNode> list) {
             LOG.debug("Received notification from [{}] containing value [{}]", observation.getPath(),
-                    value.toString());
+                    lwM2mNode.toString());
             Client client = server.getClientRegistry().findByRegistrationId(observation.getRegistrationId());
 
             if (client != null) {
                 String data = new StringBuffer("{\"ep\":\"").append(client.getEndpoint()).append("\",\"res\":\"")
-                        .append(observation.getPath().toString()).append("\",\"val\":").append(gson.toJson(value))
+                        .append(observation.getPath().toString()).append("\",\"val\":").append(gson.toJson(lwM2mNode))
                         .append("}").toString();
 
                 sendEvent(EVENT_NOTIFICATION, data, client.getEndpoint(), observation.getPath().getResourceId());
@@ -104,8 +107,8 @@ public class EventServlet extends EventSourceServlet {
         }
 
         @Override
-        public void updated(Client clientUpdated) {
-            //sendNotify();
+        public void updated(ClientUpdate clientUpdate, Client client) {
+
         }
 
         @Override
@@ -222,7 +225,7 @@ public class EventServlet extends EventSourceServlet {
             events.remove(this);
             LOG.debug("onClose. endpoint: " + endpoint);
             String resourceId = this.resourceId > -1 ? "/" + this.resourceId : "";
-            server.getObservationRegistry().cancelObservation(server.getClientRegistry().get(endpoint), "/4/0" + resourceId);
+            server.getObservationRegistry().cancelObservations(server.getClientRegistry().get(endpoint), "/4/0" + resourceId);
         }
 
         public void sendEvent(String event, String data) {
