@@ -18,8 +18,6 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
@@ -137,9 +135,7 @@ public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
     */
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitorDummy.class);
 
-
     private static final Random r = new Random();
-    private static final String routeCmd = "route -n";
 
     private int linkQuality = r.nextInt(8);
     private int signalStrength = r.nextInt(64);
@@ -151,16 +147,7 @@ public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
 
     private int sleepTime = 2000;
 
-    private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-    private static Map<String, Integer> IFaceNameToId = new HashMap<>();
-
     static {
-        IFaceNameToId.put("eth", 41);
-        IFaceNameToId.put("ens", 41);
-        IFaceNameToId.put("wlan", 21);
-        IFaceNameToId.put("wls", 21);
-
         ips.put(0, "192.168.133.37");
         ips.put(1, "192.168.133.38");
         ips.put(2, "192.168.133.39");
@@ -179,7 +166,6 @@ public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
         bearers.put(5, (long) 41);
     }
 
-    private static String currentBearerName = null;
     public ConnectivityMonitorDummy() {
         startUpdating();
     }
