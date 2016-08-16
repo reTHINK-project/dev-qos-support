@@ -44,21 +44,17 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Created by Robert Ende on 07.03.16.
+ * Event Servlet that sends notifications to subscribed browsers about client changes
+ * and handles observations on clients.
  */
 public class EventServlet extends EventSourceServlet {
     private static final Logger LOG = LoggerFactory.getLogger(EventServlet.class);
 
     private static final String EVENT_DEREGISTRATION = "DEREGISTRATION";
-
     private static final String EVENT_UPDATED = "UPDATED";
-
     private static final String EVENT_REGISTRATION = "REGISTRATION";
-
     private static final String EVENT_NOTIFICATION = "NOTIFICATION";
-
     private static final String EVENT_CLIENT_LIST = "CLIENTS";
-
     private static final String EVENT_COAP_LOG = "COAPLOG";
 
     private static final String QUERY_PARAM_ENDPOINT = "ep";
@@ -69,6 +65,7 @@ public class EventServlet extends EventSourceServlet {
 
     private Set<Event> events = new ConcurrentHashSet<>();
 
+    // observation listener handles the notifications from the clients and sends them to the browser
     private final ObservationRegistryListener observationRegistryListener = new ObservationRegistryListener() {
 
         @Override
@@ -79,9 +76,12 @@ public class EventServlet extends EventSourceServlet {
         public void newValue(Observation observation, LwM2mNode lwM2mNode, List<TimestampedLwM2mNode> list) {
             LOG.debug("Received notification from [{}] containing value [{}]", observation.getPath(),
                     lwM2mNode.toString());
+
+            // get client object that sent the notification
             Client client = server.getClientRegistry().findByRegistrationId(observation.getRegistrationId());
 
             if (client != null) {
+                // build the json notification and send it to the browser
                 String data = new StringBuffer("{\"ep\":\"").append(client.getEndpoint()).append("\",\"res\":\"")
                         .append(observation.getPath().toString()).append("\",\"val\":").append(gson.toJson(lwM2mNode))
                         .append("}").toString();
@@ -92,10 +92,12 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void newObservation(Observation observation) {
+            // we don't care for this
             LOG.debug("new observation:{}", observation);
         }
     };
 
+    // client registry listener notifies browser with new client list if new LHCB client connected
     private final ClientRegistryListener clientRegistryListener = new ClientRegistryListener() {
         private void sendNotify() {
             sendEvent(EVENT_CLIENT_LIST, gson.toJson(getEndpoints()), null, null);
@@ -108,7 +110,7 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void updated(ClientUpdate clientUpdate, Client client) {
-
+            // no need to handle update
         }
 
         @Override
@@ -117,7 +119,10 @@ public class EventServlet extends EventSourceServlet {
         }
     };
 
-
+    /**
+     * Create the EventServlet based on the given LeshanServer
+     * @param server
+     */
     public EventServlet(LeshanServer server) {
         this.server = server;
         server.getObservationRegistry().addListener(this.observationRegistryListener);
@@ -125,11 +130,19 @@ public class EventServlet extends EventSourceServlet {
 
     }
 
+    /**
+     * Send an event to each subscribed browser
+     * @param event
+     * @param data
+     * @param endpoint
+     * @param resourceId
+     */
     private synchronized void sendEvent(String event, String data, String endpoint, Integer resourceId) {
         LOG.debug("Dispatching {} event from endpoint {}", event, endpoint);
 
-
+        // Event class is event a browser is subscribed to
         for (Event e : events) {
+            // only send event if endpoint and (optionally) resourceId matches
             if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint) && resourceId != null ? resourceId == e.getResourceId() : e.getResourceId() == -1)) {
                 LOG.debug("to event endpoint: {}", e.getEndpoint());
                 try {
@@ -146,14 +159,16 @@ public class EventServlet extends EventSourceServlet {
     @Override
     protected EventSource newEventSource(HttpServletRequest req) {
         LOG.debug("newEventSource: {}", req);
-
+        // someone wants to subscribe to a certain event
         String endpointParam = req.getParameter(QUERY_PARAM_ENDPOINT);
 
         LOG.debug("extracted endpoint parameter: {}", endpointParam);
 
+        // no param provided = just general event (for e.g. client list)
         if (endpointParam == null)
             return new Event(null);
 
+        // browser wants to only be notified for certain endpoint and (optionally) resource
         String[] splitParam = endpointParam.split("/");
         if (splitParam.length > 1)
             return new Event(splitParam[0], Integer.parseInt(splitParam[1]));
@@ -161,6 +176,10 @@ public class EventServlet extends EventSourceServlet {
             return new Event(splitParam[0]);
     }
 
+    /**
+     * Returns the current list of registered endpoints on the Leshan Server
+     * @return List of endpoint names
+     */
     private String[] getEndpoints() {
         Collection<Client> clients = server.getClientRegistry().allClients();
         Iterator<Client> iterator = clients.iterator();
@@ -174,6 +193,9 @@ public class EventServlet extends EventSourceServlet {
         return endpoints;
     }
 
+    /**
+     * Holds information about an event a browser wants to be notified of when it happens
+     */
     private class Event implements EventSource {
         private String endpoint;
         private int resourceId = -1;
@@ -190,6 +212,7 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void onOpen(Emitter emitter) throws IOException {
+            // When the emitter opens, i.e. a browser connection is up, start the observation of the requested client
             this.emitter = emitter;
             events.add(this);
             //if (endpoint != null) {
@@ -222,12 +245,19 @@ public class EventServlet extends EventSourceServlet {
 
         @Override
         public void onClose() {
+            // remove event from the list and cancel the observation
             events.remove(this);
             LOG.debug("onClose. endpoint: " + endpoint);
             String resourceId = this.resourceId > -1 ? "/" + this.resourceId : "";
+            // TODO this might need a check if we have multiple events that are observing the same resource
             server.getObservationRegistry().cancelObservations(server.getClientRegistry().get(endpoint), "/4/0" + resourceId);
         }
 
+        /**
+         * Forward event to the browser using the emitter
+         * @param event - Event type
+         * @param data - JSON data (stringified)
+         */
         public void sendEvent(String event, String data) {
             try {
                 emitter.event(event, data);
@@ -237,10 +267,18 @@ public class EventServlet extends EventSourceServlet {
             }
         }
 
+        /**
+         * Get the endpoint name for this event
+         * @return name of the endpoint this event is limited to.
+         */
         public String getEndpoint() {
             return endpoint;
         }
 
+        /**
+         * Get the resourceId for this event
+         * @return ID of the resource this event is limited to.
+         */
         public int getResourceId() {
             return resourceId;
         }
