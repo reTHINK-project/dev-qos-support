@@ -48,6 +48,7 @@ public class LHCBClient {
     private String serverHost = "localhost";
     private int serverPort = 5683;
     private Class<? extends LwM2mInstanceEnabler> connectivityMonitorClass = ConnectivityMonitor.class;
+    private LeshanClient client = null;
 
     public static void main(String[] args) {
         LHCBClient client = new LHCBClient();
@@ -115,9 +116,15 @@ public class LHCBClient {
         //builder.setLocalAddress(localAddress, localPort);
         //builder.setLocalSecureAddress(secureLocalAddress, secureLocalPort);
         builder.setObjects(enablers);
-        final LeshanClient client = builder.build();
+        client = builder.build();
         // Start the client
         client.start();
+    }
+
+    public void stop() {
+        if (client != null) {
+            client.destroy(true);
+        }
     }
 
 }
