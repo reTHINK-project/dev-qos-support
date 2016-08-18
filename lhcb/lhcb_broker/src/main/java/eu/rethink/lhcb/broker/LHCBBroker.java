@@ -41,47 +41,6 @@ public class LHCBBroker {
     private int httpPort = 8080;
     private int coapPort = 5683;
 
-    public void setHttpPort(int httpPort) {
-        this.httpPort = httpPort;
-    }
-
-    public void setCoapPort(int coapPort) {
-        this.coapPort = coapPort;
-    }
-
-    public void start() {
-        // create Leshan server
-        LeshanServerBuilder lsb = new LeshanServerBuilder();
-        lsb.setLocalAddress("0", coapPort);
-        lsb.setObjectModelProvider(new CustomModelProvider());
-        leshanServer = lsb.build();
-        leshanServer.start();
-
-        // create HTTP server
-        server = new Server(httpPort);
-
-        WebAppContext root = new WebAppContext();
-        root.setContextPath("/");
-        root.setResourceBase(LHCBBroker.class.getClassLoader().getResource("webapp").toExternalForm());
-        //root.setParentLoaderPriority(true);
-        server.setHandler(root);
-
-        //ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
-        ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(leshanServer));
-        root.addServlet(servletHolder, "/.well-known/*");
-
-        ServletHolder eventHolder = new ServletHolder(new EventServlet(leshanServer));
-        root.addServlet(eventHolder, "/event/*");
-
-        try {
-            LOG.info("Server should be available at: " + server.getURI());
-            LOG.info("Starting server...");
-            server.start();
-        } catch (Exception e) {
-            LOG.error("HTTP server error", e);
-        }
-    }
-
     public static void main(String[] args) {
         LHCBBroker broker = new LHCBBroker();
 
@@ -153,5 +112,46 @@ public class LHCBBroker {
         }
 
         broker.start();
+    }
+
+    public void setHttpPort(int httpPort) {
+        this.httpPort = httpPort;
+    }
+
+    public void setCoapPort(int coapPort) {
+        this.coapPort = coapPort;
+    }
+
+    public void start() {
+        // create Leshan server
+        LeshanServerBuilder lsb = new LeshanServerBuilder();
+        lsb.setLocalAddress("0", coapPort);
+        lsb.setObjectModelProvider(new CustomModelProvider());
+        leshanServer = lsb.build();
+        leshanServer.start();
+
+        // create HTTP server
+        server = new Server(httpPort);
+
+        WebAppContext root = new WebAppContext();
+        root.setContextPath("/");
+        root.setResourceBase(LHCBBroker.class.getClassLoader().getResource("webapp").toExternalForm());
+        //root.setParentLoaderPriority(true);
+        server.setHandler(root);
+
+        //ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
+        ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(leshanServer));
+        root.addServlet(servletHolder, "/.well-known/*");
+
+        ServletHolder eventHolder = new ServletHolder(new EventServlet(leshanServer));
+        root.addServlet(eventHolder, "/event/*");
+
+        try {
+            LOG.info("Server should be available at: " + server.getURI());
+            LOG.info("Starting server...");
+            server.start();
+        } catch (Exception e) {
+            LOG.error("HTTP server error", e);
+        }
     }
 }
