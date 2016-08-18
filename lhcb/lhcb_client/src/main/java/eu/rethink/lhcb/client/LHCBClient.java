@@ -24,7 +24,6 @@ import eu.rethink.lhcb.client.objects.Device;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.californium.LeshanClientBuilder;
 import org.eclipse.leshan.client.object.Server;
-import org.eclipse.leshan.client.resource.LwM2mInstanceEnabler;
 import org.eclipse.leshan.client.resource.LwM2mObjectEnabler;
 import org.eclipse.leshan.client.resource.ObjectsInitializer;
 import org.eclipse.leshan.core.model.LwM2mModel;
@@ -47,11 +46,11 @@ public class LHCBClient {
     private static final Logger LOG = LoggerFactory.getLogger(LHCBClient.class);
     private String serverHost = "localhost";
     private int serverPort = 5683;
-    private Class<? extends LwM2mInstanceEnabler> connectivityMonitorClass = ConnectivityMonitor.class;
+    private ConnectivityMonitor connectivityMonitorInstance = null;
     private LeshanClient client = null;
 
     public static void main(String[] args) {
-        LHCBClient client = new LHCBClient();
+        final LHCBClient client = new LHCBClient();
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             switch (arg) {
@@ -65,17 +64,24 @@ public class LHCBClient {
                     break;
                 case "-d":
                 case "-dummy":
-                    client.setConnectivityMonitorClass(ConnectivityMonitorDummy.class);
+                    client.setConnectivityMonitorInstance(new ConnectivityMonitorDummy());
                 default:
                     i++;
             }
         }
 
         client.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                client.stop();
+            }
+        }));
     }
 
-    public void setConnectivityMonitorClass(Class<? extends LwM2mInstanceEnabler> connectivityMonitorClass) {
-        this.connectivityMonitorClass = connectivityMonitorClass;
+    public void setConnectivityMonitorInstance(ConnectivityMonitor connectivityMonitorInstance) {
+        this.connectivityMonitorInstance = connectivityMonitorInstance;
     }
 
     public void setServerHost(String serverHost) {
@@ -101,7 +107,13 @@ public class LHCBClient {
 
         // set dummy Device
         initializer.setClassForObject(3, Device.class);
-        initializer.setClassForObject(4, connectivityMonitorClass);
+        //initializer.setClassForObject(4, connectivityMonitorClass);
+        if (connectivityMonitorInstance == null)
+            connectivityMonitorInstance = new ConnectivityMonitor();
+
+        connectivityMonitorInstance.init();
+
+        initializer.setInstancesForObject(4, connectivityMonitorInstance);
         //initializer.setInstancesForObject(3000, new ExtendedDevice());
 
         String serverURI = String.format("coap://%s:%s", serverHost, serverPort);
@@ -123,7 +135,7 @@ public class LHCBClient {
 
     public void stop() {
         if (client != null) {
-            client.destroy(true);
+            client.stop(true);
         }
     }
 

@@ -1,58 +1,80 @@
 package eu.rethink.lhcb.client.android.objects;
 
-import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
-import org.eclipse.leshan.core.response.ReadResponse;
+import android.app.Activity;
+import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
+import eu.rethink.lhcb.client.util.Bearers;
+import eu.rethink.lhcb.client.util.Tuple;
+import eu.rethink.lhcb.client.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Robert Ende on 17.08.16.
  */
-public class ConnectivityMonitorAndroid extends BaseInstanceEnabler {
+public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitorAndroid.class);
 
-    private static Map<Integer, String> ips = new HashMap<>();
+    private Activity activity = null;
 
-    static {
-        ips.put(0, "192.168.133.37");
-        ips.put(1, "192.168.133.38");
-        ips.put(2, "192.168.133.39");
+    public ConnectivityMonitorAndroid(Activity activity) {
+        this.activity = activity;
     }
 
     @Override
-    public ReadResponse read(int resourceid) {
-        LOG.debug("Read on Device Resource " + resourceid);
-
-        switch (resourceid) {
-            case 0: // current network bearer
-                return ReadResponse.success(resourceid, 1337); // Ethernet
-            //case 1: // network bearers
-            //    //Map<Integer, Long> map = new HashMap<>();
-            //    //map.put(0, (long) 41);
-            //    return ReadResponse.success(resourceid, availableBearers, ResourceModel.Type.INTEGER);
-            //case 2: // signal strength
-            //    return ReadResponse.success(resourceid, signalStrength);
-            //case 3: // link quality
-            //    return ReadResponse.success(resourceid, linkQuality);
-            case 4: // ip addresses
-                //return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
-            //case 5: // router ip
-            //    return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
-            case 6: // link utilization
-                // TODO implementation
-            case 7: // APN
-                // TODO implementation
-            case 8: // Cell ID
-                // TODO implementation
-            case 9: // SMNC
-                // TODO implementation
-            case 10: // SMCC
-                // TODO implementation
-            default:
-                return super.read(resourceid);
-        }
+    public void init() {
+        ipThread.start();
     }
+
+    private Thread ipThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            ArrayList<Integer> changedResources = new ArrayList<>();
+            while (!Thread.interrupted()) {
+                Bearers bearers = Utils.getBearers();
+                currentBearers = bearers;
+                if (!bearers.ips.equals(currentIPs)) {
+                    currentIPs = bearers.ips;
+                    LOG.debug("current IPs have changed, set to {}", currentIPs);
+                    changedResources.add(4);
+                }
+
+                // check if current bearer is 1st element in bearers
+                if (bearers.bearers.size() == 0) {
+                    if (currentBearer != -1) {
+                        currentBearer = -1;
+                        LOG.debug("no current bearer, set to -1");
+                        changedResources.add(0);
+                    }
+                } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
+                    currentBearer = bearers.bearers.get(0).y;
+                    LOG.debug("current bearer has changed, set to {}", currentBearer);
+                    changedResources.add(0);
+                }
+
+                // make bearers to currentAvailableBearers
+                Map<Integer, Long> map = new HashMap<>();
+                int j = 0;
+                for (Tuple<String, Integer> bearer : bearers.bearers) {
+                    map.put(j++, (long) bearer.y);
+                }
+
+                if (!map.equals(currentAvailableBearers)) {
+                    currentAvailableBearers = map;
+                    LOG.debug("available bearers have changed, set to {}", currentAvailableBearers);
+                    changedResources.add(1);
+                }
+
+                fireResourcesChange(changedResources);
+                changedResources.clear();
+
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
+        }
+    });
 }

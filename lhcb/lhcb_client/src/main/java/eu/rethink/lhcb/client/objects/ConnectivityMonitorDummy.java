@@ -18,20 +18,15 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
-import org.eclipse.leshan.core.model.ResourceModel;
-import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object with Dummy values
  */
-public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
+public class ConnectivityMonitorDummy extends ConnectivityMonitor {
     /*
     ID = Name (Instances, Mandatory, Type, Range/Unit)
 
@@ -137,82 +132,57 @@ public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
 
     private static final Random r = new Random();
 
-    private int linkQuality = r.nextInt(8);
-    private int signalStrength = r.nextInt(64);
-    private int linkUtilization = r.nextInt(100);
-    private static Map<Integer, String> ips = new HashMap<>();
-    private static Map<Integer, String> routerIps = new HashMap<>();
-    private static Map<Integer, Long> bearers = new HashMap<>();
-    private static Map<Integer, String> apns = new HashMap<>();
+    @Override
+    public void init() {
+        // 00
+        currentBearer = 2;
 
-    private int sleepTime = 2000;
+        // 01
+        currentAvailableBearers.put(0, (long) 1);
+        currentAvailableBearers.put(1, (long) 2);
+        currentAvailableBearers.put(3, (long) 5);
+        currentAvailableBearers.put(4, (long) 21);
+        currentAvailableBearers.put(5, (long) 41);
 
-    static {
-        ips.put(0, "192.168.133.37");
-        ips.put(1, "192.168.133.38");
-        ips.put(2, "192.168.133.39");
+        // 02
+        signalStrength = r.nextInt(64);
 
+        // 03
+        linkQuality = r.nextInt(8);
+
+        // 04
+        currentIPs.put(0, "192.168.133.37");
+        currentIPs.put(1, "192.168.133.38");
+        currentIPs.put(2, "192.168.133.39");
+
+        // 05
         routerIps.put(0, "192.168.133.1");
 
-        apns.put(0, "internet");
-        apns.put(1, "mywap");
-        apns.put(2, "bigbank-intranet");
-        apns.put(3, "mycompany.mnc02.mcc283.gprs");
+        // 06
+        linkUtilization = r.nextInt(100);
 
-        bearers.put(0, (long) 1);
-        bearers.put(1, (long) 2);
-        bearers.put(3, (long) 5);
-        bearers.put(4, (long) 21);
-        bearers.put(5, (long) 41);
-    }
+        // 07
+        apn.put(0, "internet");
+        apn.put(1, "mywap");
+        apn.put(2, "bigbank-intranet");
+        apn.put(3, "mycompany.mnc02.mcc283.gprs");
 
-    public ConnectivityMonitorDummy() {
-        startUpdating();
-    }
+        // 08
+        cellId = 24908;
 
-    @Override
-    public ReadResponse read(int resourceid) {
-        switch (resourceid) {
-            case 0: // current network bearer
-                return ReadResponse.success(resourceid, 2);
-            case 1: // network bearers
-                return ReadResponse.success(resourceid, bearers, ResourceModel.Type.INTEGER);
-            case 2: // signal strength
-                return ReadResponse.success(resourceid, signalStrength);
-            case 3: // link quality
-                return ReadResponse.success(resourceid, linkQuality);
-            case 4: // ip addresses
-                return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
-            case 5: // router ip
-                return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
-            case 6: // link utilization
-                return ReadResponse.success(resourceid, linkUtilization);
-            case 7: // APN
-                return ReadResponse.success(resourceid, apns, ResourceModel.Type.STRING);
-            case 8: // Cell ID
-                return ReadResponse.success(resourceid, 24908);
-            case 9: // SMNC
-                return ReadResponse.success(resourceid, 243);
-            case 10: // SMCC
-                return ReadResponse.success(resourceid, 6);
-            default:
-                return super.read(resourceid);
-        }
-    }
+        // 09
+        smnc = 243;
 
-    private void startUpdating() {
-        LOG.debug("Start updating resources");
+        // 10
+        smcc = 6;
+
         randomizerThread.start();
-    }
-
-    private void stopUpdating() {
-        LOG.debug("Stop updating resources");
-        randomizerThread.interrupt();
     }
 
     private Thread randomizerThread = new Thread(new Runnable() {
         @Override
         public void run() {
+            LOG.info("randomizerThread running");
             while (!Thread.interrupted()) {
                 linkQuality = r.nextInt(8);
                 signalStrength = r.nextInt(64);
@@ -228,6 +198,7 @@ public class ConnectivityMonitorDummy extends BaseInstanceEnabler {
                     //e.printStackTrace();
                 }
             }
+            LOG.info("randomizerThread done");
         }
     });
 }
