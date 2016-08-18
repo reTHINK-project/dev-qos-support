@@ -24,10 +24,31 @@ cd <git_repo_root_dir>/lhcb
 
 To start the LHCB Broker, run
 ```
-xxx
+java -jar lhcb_broker/target/rethink-lhcb-broker-*-jar-with-dependencies.jar
 ```
 and for the LHCB Client
 ```
-xxxx
+java -jar lhcb_client/target/rethink-lhcb-client-*-jar-with-dependencies.jar
 ```
+
+## Configuring the LHCB
+
+### Configuring the LHCB Broker
+The LHCB Broker supports the following launch options for configuration:
+
+option                      | description
+--------------------------- | ---------------------------
+-http, -h                   | set http port
+-ssl, -s,                   | set https port
+-coap, -c                   | set CoAP port
+-coaps, -cs                 | set CoAPs port
+
+### Configuring the LHCB Client
+The LHCB Client supports the following launch options for configuration:
+
+option                      | description
+--------------------------- | ---------------------------
+-host, -h                   | set LHCB Broker Host Name
+-port, -p                   | set LHCB Broker CoAP Port
+-dummy, -d                  | provide dummy data instead of real data
 
