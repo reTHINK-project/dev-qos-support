@@ -17,7 +17,7 @@ From the redis folder:
 
 `cd ../broker/BrokerServer`  
 
-At this stage you have to provide the good server certificates in order to work, with the FQDN of the server where it is installed (see [README](BrokerServer/sslkeys/README.md))  
+At this stage you have to provide the good server certificates in order to work, with the FQDN of the server where it is installed (see [README](broker/BrokerServer/sslkeys/README.md))  
 `docker build -t rethink/broker .  `  
 `docker run --name broker -d rethink/broker -dbIP IP-REDIS  -dbP PORT-REDIS `  
 
@@ -27,7 +27,7 @@ To verify that it works, https://domain_name:port/dashboard.html
 `cd ../coturn`  
 From the broker/coturn folder:  
 `docker build -t rethink/coturn .`   
-`docker run -d -it --name="coturn" rethink/coturn -dbIP IP-REDIS -realm REALM`  
+`docker run -d -it --name="coturn" --net=host rethink/coturn -dbIP IP-REDIS -realm REALM`  
 
 
 
