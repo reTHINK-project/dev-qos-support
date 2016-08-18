@@ -24,6 +24,5 @@ case $1 in
     shift
 done
 
-service redis_6379 restart
-tail -f 
+service redis_6379 restart  && tail -f /dev/null
 

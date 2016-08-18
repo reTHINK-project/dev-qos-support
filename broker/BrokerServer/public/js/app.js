@@ -29,7 +29,7 @@
  */
 (function(){
     var app = angular.module('dashboard', ['cspFilters']);
-    var currentFilteringUnit = "GB";
+    var currentFilteringUnit = "MB";
 
     /**
      * return the consumption percentage given the consumption and the quota
