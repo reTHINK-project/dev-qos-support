@@ -145,8 +145,8 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     private static final Random r = new Random();
     private static final String routeCmd = "route -n";
 
-    private int linkQuality = r.nextInt(256);
-    private int signalStrength = r.nextInt(256);
+    private int linkQuality = -1;
+    private int signalStrength = -1;
     private Map<Integer, String> ips = new HashMap<>();
     private Map<Integer, String> routerIps = new HashMap<>();
 
@@ -180,9 +180,17 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                 //map.put(0, (long) 41);
                 return ReadResponse.success(resourceid, availableBearers, ResourceModel.Type.INTEGER);
             case 2: // signal strength
-                return ReadResponse.success(resourceid, signalStrength);
+                if (signalStrength != -1) {
+                    return ReadResponse.success(resourceid, signalStrength);
+                } else {
+                    return super.read(resourceid);
+                }
             case 3: // link quality
-                return ReadResponse.success(resourceid, linkQuality);
+                if (linkQuality != -1) {
+                    return ReadResponse.success(resourceid, linkQuality);
+                } else {
+                    return super.read(resourceid);
+                }
             case 4: // ip addresses
                 return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
             case 5: // router ip
