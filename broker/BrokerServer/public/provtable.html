@@ -10,20 +10,10 @@
         <th class="button" ng-class="{activefilter: csplist.order === 'csp' || csplist.order === '-csp',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('csp')">CSP
             <img ng-show="csplist.order === 'csp' || csplist.order === '-csp'" src="img/ic_filter_list_black_24px.svg"/>
         </th>
-        <th class="button" ng-class="{activefilter: csplist.order === 'audiopercent' || csplist.order === '-audiopercent',turnFilter: csplist.orderType !== '-'}" >Audio consumed
-        </th>
-        <th class="button" ng-class="{activefilter: csplist.order === 'audiopercent' || csplist.order === '-audiopercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('audiopercent')">Audio provisioned
-            <img ng-show="csplist.order === 'audiopercent' || csplist.order === '-audiopercent'" src="img/ic_filter_list_black_24px.svg"/>
-        </th>
-        <th class="button" ng-class="{activefilter: csplist.order === 'videopercent' || csplist.order === '-videopercent',turnFilter: csplist.orderType !== '-'}" >Video consumed
-        </th>
-        <th class="button" ng-class="{activefilter: csplist.order === 'videopercent' || csplist.order === '-videopercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('videopercent')">Video provisioned
-            <img ng-show="csplist.order === 'videopercent' || csplist.order === '-videopercent'" src="img/ic_filter_list_black_24px.svg"/>
-        </th>
-        <th class="button" ng-class="{activefilter: csplist.order === 'datapercent' || csplist.order === '-datapercent',turnFilter: csplist.orderType !== '-'}" >Data consumed
-        </th>
         <th class="button" ng-class="{activefilter: csplist.order === 'datapercent' || csplist.order === '-datapercent',turnFilter: csplist.orderType !== '-'}" ng-click="csplist.filter('datapercent')">Data provisioned
             <img ng-show="csplist.order === 'datapercent' || csplist.order === '-datapercent'" src="img/ic_filter_list_black_24px.svg"/>
+        </th>
+        <th class="button" ng-class="{activefilter: csplist.order === 'datapercent' || csplist.order === '-datapercent',turnFilter: csplist.orderType !== '-'}" >Data consumed
         </th>
     </tr>
     <tr ng-repeat="csp in csplist.provs | orderBy:csplist.order">
@@ -31,26 +21,12 @@
             <img  style="float:left" class="button" ng-click="csplist.showEdit(csp)" src="img/ic_mode_edit_black_18px.svg"/>
             {{ csp.csp | cspfilter }}
         </td>
-        <td ng-class="{red: csp.audiopercent > 90 }">
-            <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.audiohasrisen"/>
-            <span class="verticalAlign">{{ csp.audioconsumed || 0 | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
-        </td>
         <td>
-            <span>{{ csp.audioQuota  | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
-        </td>
-        <td  ng-class="{red: csp.videopercent > 90 }">
-            <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.videohasrisen"/>
-            <span class="verticalAlign">{{ csp.videoconsumed || 0 | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
-        </td>
-        <td>
-            <span>{{ csp.videoQuota  |  bytes:csplist.filteringUnit}} {{csplist.filteringUnit}}</span>
+            <span>{{ csp.dataQuota | bytes:csplist.filteringUnit }} {{csplist.filteringUnit}}</span>
         </td>
         <td ng-class="{red: csp.datapercent > 90 }">
             <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.datahasrisen"/>
             <span class="verticalAlign">{{ csp.dataconsumed || 0  | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
-        </td>
-        <td>
-            <span>{{ csp.dataQuota | bytes:csplist.filteringUnit }} {{csplist.filteringUnit}}</span>
         </td>
     </tr>
 </table>
@@ -59,31 +35,20 @@
     <table class="basic-grey">
     <tr>
         <th>CSP</th>
-        <th>Audio</th>
-        <th>Video</th>
-        <th>Data</th>
+        <th>Data provisioned</th>
+        <th>Data consumed</th>
     </tr>
     <tr>
         <td>
             {{ csplist.cspToEdit.csp | cspfilter }}
         </td>
         <td>
-            {{ csplist.cspToEdit.audioconsumed || 0  | bytes:csplist.filteringUnit}} /
-            <input string-to-number ng-model="csplist.cspToEdit.audioQuota" type="number" min="0" value="{{ csplist.cspToEdit.audioQuota }}">
-                {{csplist.filteringUnit}}
-            </input>
-        </td>
-        <td>
-            {{ csplist.cspToEdit.videoconsumed || 0 | bytes:csplist.filteringUnit}} /
-            <input string-to-number ng-model="csplist.cspToEdit.videoQuota" type="number" min="0" value="{{ csplist.cspToEdit.videoQuota }}">
-                {{csplist.filteringUnit}}
-            </input>
-        </td>
-        <td>
-            {{ csplist.cspToEdit.dataconsumed || 0  | bytes:csplist.filteringUnit}} /
             <input string-to-number ng-model="csplist.cspToEdit.dataQuota" type="number" min="0" value="{{ csplist.cspToEdit.dataQuota }}">
                 {{csplist.filteringUnit}}
             </input>
+        </td>
+        <td>
+            {{ csplist.cspToEdit.dataconsumed || 0  | bytes:csplist.filteringUnit}} {{csplist.filteringUnit}}
         </td>
     </tr>
     </table>
