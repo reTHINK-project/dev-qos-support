@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object
@@ -136,14 +137,109 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     */
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitor.class);
 
-    public int linkQuality = -1;
-    public int signalStrength = -1;
-    public Map<Integer, String> currentIPs = new HashMap<>();
-    public Map<Integer, String> routerIps = new HashMap<>();
-    public Bearers currentBearers = null;
     public int currentBearer = -1;
+    public Bearers currentBearers = null;
     public Map<Integer, Long> currentAvailableBearers = new HashMap<>();
-    public int sleepTime = 2000;
+    public int signalStrength = 64;
+    public int linkQuality = -1;
+
+    /*
+    Runners
+     */
+    public final Runnable iwconfigRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("iwconfigRunner running");
+            ArrayList<Integer> changedResources = new ArrayList<>();
+            if (currentBearers != null) {
+                Tuple<String, Integer> cb = currentBearers.getCurrentBearer();
+                if (cb != null) {
+                    Tuple<Integer, Integer> lqss = Utils.getLinkQualityAndSignalStrength(cb.x);
+
+                    if (linkQuality != lqss.x) {
+                        linkQuality = lqss.x;
+                        changedResources.add(3);
+                    }
+
+                    if (signalStrength != lqss.y) {
+                        signalStrength = lqss.y;
+                        changedResources.add(2);
+                    }
+
+                    if (changedResources.size() > 0)
+                        fireResourcesChange(changedResources);
+                }
+            }
+            //LOG.info("iwconfigRunner done");
+        }
+    };
+
+    public Map<Integer, String> currentIPs = new HashMap<>();
+    public final Runnable ipRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("ipRunner running");
+
+            ArrayList<Integer> changedResources = new ArrayList<>();
+            Bearers bearers = Utils.getBearers();
+            currentBearers = bearers;
+            if (!bearers.ips.equals(currentIPs)) {
+                currentIPs = bearers.ips;
+                LOG.trace("current IPs have changed, set to {}", currentIPs);
+                changedResources.add(4);
+            }
+
+            // check if current bearer is 1st element in bearers
+            if (bearers.bearers.size() == 0) {
+                if (currentBearer != -1) {
+                    currentBearer = -1;
+                    LOG.trace("no current bearer, set to -1");
+                    changedResources.add(0);
+                }
+            } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
+                currentBearer = bearers.bearers.get(0).y;
+                LOG.trace("current bearer has changed, set to {}", currentBearer);
+                changedResources.add(0);
+            }
+
+            // make bearers to currentAvailableBearers
+            Map<Integer, Long> map = new HashMap<>();
+            int j = 0;
+            for (Tuple<String, Integer> bearer : bearers.bearers) {
+                map.put(j++, (long) bearer.y);
+            }
+
+            if (!map.equals(currentAvailableBearers)) {
+                currentAvailableBearers = map;
+                LOG.trace("available bearers have changed, set to {}", currentAvailableBearers);
+                changedResources.add(1);
+            }
+
+            if (changedResources.size() > 0)
+                fireResourcesChange(changedResources);
+            //LOG.info("ipRunner done");
+        }
+    };
+
+    public Map<Integer, String> routerIps = new HashMap<>();
+    public final Runnable gatewayRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("gatewayRunner running");
+
+            Map<Integer, String> newGatewayIPs = Utils.getGatewayIPs();
+            if (!newGatewayIPs.equals(routerIps)) {
+                routerIps = newGatewayIPs;
+                try {
+                    fireResourcesChange(5);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                    LOG.warn("Unable to fire ResourceChange for Gateway IPs (#5)", e);
+                }
+            }
+            //LOG.info("gatewayRunner done");
+        }
+    };
 
     // cellular stuff
     public int linkUtilization = -1;
@@ -151,16 +247,95 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     public int cellId = -1;
     public int smnc = -1;
     public int smcc = -1;
+    public int sleepTime = 2000;
 
-    public void init() {
-        LOG.debug("initializing ConnectivityMonitor");
-        iwconfigThread.start();
+    // runner related
+    private List<Runnable> runnables = new CopyOnWriteArrayList<>();
+    private Thread runnerThread = null;
 
-        // update ip list
-        ipThread.start();
+    /**
+     * Adds one or more Runnables to the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables - One or more Runnables to add to the list
+     */
+    public void addToRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            if (this.runnables.contains(runnable)) {
+                LOG.trace("Runnable already in runnables list {}", runnable);
+            } else {
+                this.runnables.add(runnable);
+            }
+        }
+    }
 
-        // update gateway IPs
-        gatewayThread.start();
+    /**
+     * Removes one or more Runnables from the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables
+     */
+    public void removeFromRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            this.runnables.remove(runnable);
+        }
+    }
+
+    /**
+     * Start the Runner Thread.
+     */
+    public void startRunner() {
+        if (runnerThread != null) {
+            LOG.info("Runner Thread is already running");
+            return;
+            //stopRunner();
+        }
+
+        runnerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long startTime, endTime, diff;
+                int skips;
+                while (!Thread.interrupted()) {
+                    startTime = System.currentTimeMillis();
+                    for (int i = 0; i < runnables.size(); i++) {
+                        try {
+                            runnables.get(i).run();
+                        } catch (Exception e) {
+                            //e.printStackTrace();
+                            LOG.warn("Runnable #" + i + " crashed:", e);
+                        }
+                    }
+                    endTime = System.currentTimeMillis();
+                    diff = endTime - startTime;
+                    LOG.trace("RunnerThread: Needed {}ms for {} runnables", diff, runnables.size());
+                    skips = 0;
+                    while (sleepTime - diff < 0) {
+                        skips++;
+                        diff -= sleepTime;
+                    }
+
+                    if (skips > 0) {
+                        LOG.trace("RunnerThread: Skipping sleep {} time(s)", skips);
+                    }
+                    try {
+                        Thread.sleep(sleepTime - diff);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        runnerThread.start();
+    }
+
+    /**
+     * Stop the Runner Thread.
+     */
+    public void stopRunner() {
+        if (runnerThread != null) {
+            runnerThread.interrupt();
+            runnerThread = null;
+        }
     }
 
     @Override
@@ -169,8 +344,6 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             case 0: // current network bearer
                 return ReadResponse.success(resourceid, currentBearer); // Ethernet
             case 1: // network bearers
-                //Map<Integer, Long> map = new HashMap<>();
-                //map.put(0, (long) 41);
                 return ReadResponse.success(resourceid, currentAvailableBearers, ResourceModel.Type.INTEGER);
             case 2: // signal strength
                 if (signalStrength != -1) {
@@ -231,123 +404,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         }
     }
 
-    private Thread ipThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("ipThread running");
-
-            ArrayList<Integer> changedResources = new ArrayList<>();
-            while (!Thread.interrupted()) {
-                Bearers bearers = Utils.getBearers();
-                currentBearers = bearers;
-                if (!bearers.ips.equals(currentIPs)) {
-                    currentIPs = bearers.ips;
-                    LOG.debug("current IPs have changed, set to {}", currentIPs);
-                    changedResources.add(4);
-                }
-
-                // check if current bearer is 1st element in bearers
-                if (bearers.bearers.size() == 0) {
-                    if (currentBearer != -1) {
-                        currentBearer = -1;
-                        LOG.debug("no current bearer, set to -1");
-                        changedResources.add(0);
-                    }
-                } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
-                    currentBearer = bearers.bearers.get(0).y;
-                    LOG.debug("current bearer has changed, set to {}", currentBearer);
-                    changedResources.add(0);
-                }
-
-                // make bearers to currentAvailableBearers
-                Map<Integer, Long> map = new HashMap<>();
-                int j = 0;
-                for (Tuple<String, Integer> bearer : bearers.bearers) {
-                    map.put(j++, (long) bearer.y);
-                }
-
-                if (!map.equals(currentAvailableBearers)) {
-                    currentAvailableBearers = map;
-                    LOG.debug("available bearers have changed, set to {}", currentAvailableBearers);
-                    changedResources.add(1);
-                }
-
-                fireResourcesChange(changedResources);
-                changedResources.clear();
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("ipThread done");
-        }
-    });
-
-    private Thread gatewayThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("gatewayThread running");
-
-            while (!Thread.interrupted()) {
-                Map<Integer, String> newGatewayIPs = Utils.getGatewayIPs();
-                if (!newGatewayIPs.equals(routerIps)) {
-                    routerIps = newGatewayIPs;
-                    try {
-                        fireResourcesChange(5);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                        LOG.warn("Unable to fire ResourceChange for Gateway IPs (#5)", e);
-                    }
-                }
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("gatewayThread done");
-        }
-    });
-
-    private Thread iwconfigThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("iwconfigThread running");
-            ArrayList<Integer> changedResources = new ArrayList<>();
-            while (!Thread.interrupted()) {
-                if (currentBearers != null) {
-                    Tuple<String, Integer> cb = currentBearers.getCurrentBearer();
-                    if (cb != null) {
-                        Tuple<Integer, Integer> lqss = Utils.getLinkQualityAndSignalStrength(cb.x);
-
-                        if (linkQuality != lqss.x) {
-                            linkQuality = lqss.x;
-                            changedResources.add(2);
-                        }
-
-                        if (signalStrength != lqss.y) {
-                            signalStrength = lqss.y;
-                            changedResources.add(3);
-                        }
-
-                        fireResourcesChange(changedResources);
-                        changedResources.clear();
-
-                    }
-                }
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("iwconfigThread done");
-        }
-    });
-
+    /**
+     * Allows to call fireResourcesChange to accept a List Object.
+     *
+     * @param changedResources - List of resource IDs that changed
+     */
     public void fireResourcesChange(List<Integer> changedResources) {
         if (changedResources.size() > 0) {
             int[] intArray = new int[changedResources.size()];
@@ -355,7 +416,7 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                 intArray[i] = changedResources.get(i);
             }
             try {
-                LOG.debug("firing Resource Change for {}", Arrays.toString(intArray));
+                LOG.trace("firing Resource Change for {}", Arrays.toString(intArray));
                 fireResourcesChange(intArray);
             } catch (Exception e) {
                 //e.printStackTrace();
@@ -364,6 +425,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         }
     }
 
+    /**
+     * Returns a Map of the variables this class provides.
+     *
+     * @return - A map of variables
+     */
     public Map<String, Object> getVarMap() {
         Map<String, Object> varMap = new LinkedHashMap<>();
         varMap.put("currentBearer", currentBearer);
@@ -381,6 +447,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return varMap;
     }
 
+    /**
+     * Convert this instance to a JSON String.
+     *
+     * @return JSON String representation of this instance
+     */
     public String toJson() {
         return Utils.gson.toJson(getVarMap());
     }

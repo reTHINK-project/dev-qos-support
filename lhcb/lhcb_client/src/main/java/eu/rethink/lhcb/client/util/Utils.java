@@ -64,7 +64,7 @@ public class Utils {
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
                 if (iface.isUp()) {
-                    LOG.debug("getIPs: checking iface {} ", gson.toJson(iface));
+                    //LOG.trace("getIPs: checking iface {} ", gson.toJson(iface));
 
                     // only consider interface that are up
                     // try to get bearer kind
@@ -156,7 +156,7 @@ public class Utils {
             }
         } catch (IOException e) {
             //e.printStackTrace();
-            LOG.warn("Unable to get WiFi info using iwconfig", e);
+            LOG.trace("Unable to get WiFi info using iwconfig, probably because it is not installed", e);
         }
         return new Tuple<>(linkQuality, signalStrength);
     }
