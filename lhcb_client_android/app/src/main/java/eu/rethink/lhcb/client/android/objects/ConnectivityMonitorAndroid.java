@@ -1,80 +1,68 @@
+/*
+ * Copyright [2015-2017] Fraunhofer Gesellschaft e.V., Institute for
+ * Open Communication Systems (FOKUS)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package eu.rethink.lhcb.client.android.objects;
 
-import android.app.Activity;
+import android.content.Context;
+import android.net.wifi.WifiManager;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
-import eu.rethink.lhcb.client.util.Bearers;
-import eu.rethink.lhcb.client.util.Tuple;
-import eu.rethink.lhcb.client.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
 
 /**
- * Created by Robert Ende on 17.08.16.
+ * Extension of ConnectivityMonitor with Android specific Runnables.
  */
 public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitorAndroid.class);
 
-    private Activity activity = null;
+    // Context of App that runs the LHCB Client (needed for wifi Runner)
+    private Context context = null;
 
-    public ConnectivityMonitorAndroid(Activity activity) {
-        this.activity = activity;
-    }
-
-    @Override
-    public void init() {
-        ipThread.start();
-    }
-
-    private Thread ipThread = new Thread(new Runnable() {
+    /**
+     * Retrieves signal strength & link quality from Wifi Manager.
+     */
+    private Runnable wifiRunner = new Runnable() {
         @Override
         public void run() {
-            ArrayList<Integer> changedResources = new ArrayList<>();
-            while (!Thread.interrupted()) {
-                Bearers bearers = Utils.getBearers();
-                currentBearers = bearers;
-                if (!bearers.ips.equals(currentIPs)) {
-                    currentIPs = bearers.ips;
-                    LOG.debug("current IPs have changed, set to {}", currentIPs);
-                    changedResources.add(4);
-                }
+            ArrayList<Integer> changedResources = new ArrayList<>(2);
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 
-                // check if current bearer is 1st element in bearers
-                if (bearers.bearers.size() == 0) {
-                    if (currentBearer != -1) {
-                        currentBearer = -1;
-                        LOG.debug("no current bearer, set to -1");
-                        changedResources.add(0);
-                    }
-                } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
-                    currentBearer = bearers.bearers.get(0).y;
-                    LOG.debug("current bearer has changed, set to {}", currentBearer);
-                    changedResources.add(0);
-                }
+            int newSignalStrength = WifiManager.calculateSignalLevel(wifiManager.getConnectionInfo().getRssi(), 64);
+            int newLinkQuality = wifiManager.getConnectionInfo().getLinkSpeed();
 
-                // make bearers to currentAvailableBearers
-                Map<Integer, Long> map = new HashMap<>();
-                int j = 0;
-                for (Tuple<String, Integer> bearer : bearers.bearers) {
-                    map.put(j++, (long) bearer.y);
-                }
-
-                if (!map.equals(currentAvailableBearers)) {
-                    currentAvailableBearers = map;
-                    LOG.debug("available bearers have changed, set to {}", currentAvailableBearers);
-                    changedResources.add(1);
-                }
-
-                fireResourcesChange(changedResources);
-                changedResources.clear();
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
+            if (signalStrength != newSignalStrength) {
+                signalStrength = newSignalStrength;
+                changedResources.add(2);
             }
+
+            if (linkQuality != newLinkQuality) {
+                linkQuality = newLinkQuality;
+                changedResources.add(3);
+            }
+
+            if (changedResources.size() > 0)
+                fireResourcesChange(changedResources);
         }
-    });
+    };
+
+    public ConnectivityMonitorAndroid(Context context) {
+        this.context = context;
+        addToRunner(ipRunner, gatewayRunner, wifiRunner);
+    }
 }
