@@ -218,12 +218,26 @@ redisDAO.prototype.registerCSP = function(formDatas, TTL){
     var redisKey = 'prov:'+clientIdHash;
     var dao = this;
     var asGB = 1024*1024*1024;
+
+    var audioQuota = 0;
+    var videoQuota = 0;
+
+    if ((formDatas.audio !== undefined) && (formDatas.audio !== null)) {
+        audioQuota = parseInt(formDatas.audio);
+        daoLog("#### audio quota is not null : " + audioQuota);
+    }
+
+    if ((formDatas.video !== undefined) && (formDatas.video !== null)) {
+        videoQuota = parseInt(formDatas.video);
+        daoLog("#### video quota is not null : " + videoQuota);
+    }
+
     //Switching to DB 2
     daoLog("Calling HMSET with key : " + redisKey);
     dao.client.selectAsync(2)
     .then(function(){
-        dao.client.HSETNX(redisKey,'audioQuota',parseInt(formDatas.audio)*asGB,function(){});
-        dao.client.HSETNX(redisKey,'videoQuota',parseInt(formDatas.video)*asGB,function(){});
+        dao.client.HSETNX(redisKey,'audioQuota',audioQuota*asGB,function(){});
+        dao.client.HSETNX(redisKey,'videoQuota',videoQuota*asGB,function(){});
         dao.client.HSETNX(redisKey,'dataQuota',parseInt(formDatas.qdata)*asGB,function(){});
         dao.client.HSETNX(redisKey, 'conso', redisKey+":conso",function(){});
         dao.client.HSETNX(redisKey+":conso", 'audio', 0,function(){});

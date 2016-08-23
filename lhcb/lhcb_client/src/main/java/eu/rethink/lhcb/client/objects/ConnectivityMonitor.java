@@ -18,19 +18,17 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import eu.rethink.lhcb.client.util.Bearers;
+import eu.rethink.lhcb.client.util.Tuple;
+import eu.rethink.lhcb.client.util.Utils;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object
@@ -139,29 +137,205 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     */
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitor.class);
 
+    public int currentBearer = -1;
+    public Bearers currentBearers = null;
+    public Map<Integer, Long> currentAvailableBearers = new HashMap<>();
+    public int signalStrength = 64;
+    public int linkQuality = -1;
 
-    private static final Random r = new Random();
-    private static final String routeCmd = "route -n";
+    /*
+    Runners
+     */
+    public final Runnable iwconfigRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("iwconfigRunner running");
+            ArrayList<Integer> changedResources = new ArrayList<>();
+            if (currentBearers != null) {
+                Tuple<String, Integer> cb = currentBearers.getCurrentBearer();
+                if (cb != null) {
+                    Tuple<Integer, Integer> lqss = Utils.getLinkQualityAndSignalStrength(cb.x);
 
-    private int linkQuality = r.nextInt(256);
-    private Map<Integer, String> ips = new HashMap<>();
-    private Map<Integer, String> routerIps = new HashMap<>();
+                    if (linkQuality != lqss.x) {
+                        linkQuality = lqss.x;
+                        changedResources.add(3);
+                    }
 
-    private Integer currentBearer = 0;
-    private Map<Integer, Long> availableBearers = new HashMap<>();
-    private int sleepTime = 2000;
+                    if (signalStrength != lqss.y) {
+                        signalStrength = lqss.y;
+                        changedResources.add(2);
+                    }
 
-    private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                    if (changedResources.size() > 0)
+                        fireResourcesChange(changedResources);
+                }
+            }
+            //LOG.info("iwconfigRunner done");
+        }
+    };
 
-    private static Map<String, Integer> IFaceNameToId = new HashMap<>();
+    public Map<Integer, String> currentIPs = new HashMap<>();
+    public final Runnable ipRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("ipRunner running");
 
-    static {
-        IFaceNameToId.put("eth", 41);
-        IFaceNameToId.put("wlan", 21);
+            ArrayList<Integer> changedResources = new ArrayList<>();
+            Bearers bearers = Utils.getBearers();
+            currentBearers = bearers;
+            if (!bearers.ips.equals(currentIPs)) {
+                currentIPs = bearers.ips;
+                LOG.trace("current IPs have changed, set to {}", currentIPs);
+                changedResources.add(4);
+            }
+
+            // check if current bearer is 1st element in bearers
+            if (bearers.bearers.size() == 0) {
+                if (currentBearer != -1) {
+                    currentBearer = -1;
+                    LOG.trace("no current bearer, set to -1");
+                    changedResources.add(0);
+                }
+            } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
+                currentBearer = bearers.bearers.get(0).y;
+                LOG.trace("current bearer has changed, set to {}", currentBearer);
+                changedResources.add(0);
+            }
+
+            // make bearers to currentAvailableBearers
+            Map<Integer, Long> map = new HashMap<>();
+            int j = 0;
+            for (Tuple<String, Integer> bearer : bearers.bearers) {
+                map.put(j++, (long) bearer.y);
+            }
+
+            if (!map.equals(currentAvailableBearers)) {
+                currentAvailableBearers = map;
+                LOG.trace("available bearers have changed, set to {}", currentAvailableBearers);
+                changedResources.add(1);
+            }
+
+            if (changedResources.size() > 0)
+                fireResourcesChange(changedResources);
+            //LOG.info("ipRunner done");
+        }
+    };
+
+    public Map<Integer, String> routerIps = new HashMap<>();
+    public final Runnable gatewayRunner = new Runnable() {
+        @Override
+        public void run() {
+            //LOG.info("gatewayRunner running");
+
+            Map<Integer, String> newGatewayIPs = Utils.getGatewayIPs();
+            if (!newGatewayIPs.equals(routerIps)) {
+                routerIps = newGatewayIPs;
+                try {
+                    fireResourcesChange(5);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                    LOG.warn("Unable to fire ResourceChange for Gateway IPs (#5)", e);
+                }
+            }
+            //LOG.info("gatewayRunner done");
+        }
+    };
+
+    // cellular stuff
+    public int linkUtilization = -1;
+    public Map<Integer, String> apn = new HashMap<>();
+    public int cellId = -1;
+    public int smnc = -1;
+    public int smcc = -1;
+    public int sleepTime = 2000;
+
+    // runner related
+    private List<Runnable> runnables = new CopyOnWriteArrayList<>();
+    private Thread runnerThread = null;
+
+    /**
+     * Adds one or more Runnables to the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables - One or more Runnables to add to the list
+     */
+    public void addToRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            if (this.runnables.contains(runnable)) {
+                LOG.trace("Runnable already in runnables list {}", runnable);
+            } else {
+                this.runnables.add(runnable);
+            }
+        }
     }
 
-    public ConnectivityMonitor() {
-        startUpdating();
+    /**
+     * Removes one or more Runnables from the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables
+     */
+    public void removeFromRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            this.runnables.remove(runnable);
+        }
+    }
+
+    /**
+     * Start the Runner Thread.
+     */
+    public void startRunner() {
+        if (runnerThread != null) {
+            LOG.info("Runner Thread is already running");
+            return;
+            //stopRunner();
+        }
+
+        runnerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long startTime, endTime, diff;
+                int skips;
+                while (!Thread.interrupted()) {
+                    startTime = System.currentTimeMillis();
+                    for (int i = 0; i < runnables.size(); i++) {
+                        try {
+                            runnables.get(i).run();
+                        } catch (Exception e) {
+                            //e.printStackTrace();
+                            LOG.warn("Runnable #" + i + " crashed:", e);
+                        }
+                    }
+                    endTime = System.currentTimeMillis();
+                    diff = endTime - startTime;
+                    LOG.trace("RunnerThread: Needed {}ms for {} runnables", diff, runnables.size());
+                    skips = 0;
+                    while (sleepTime - diff < 0) {
+                        skips++;
+                        diff -= sleepTime;
+                    }
+
+                    if (skips > 0) {
+                        LOG.trace("RunnerThread: Skipping sleep {} time(s)", skips);
+                    }
+                    try {
+                        Thread.sleep(sleepTime - diff);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        runnerThread.start();
+    }
+
+    /**
+     * Stop the Runner Thread.
+     */
+    public void stopRunner() {
+        if (runnerThread != null) {
+            runnerThread.interrupt();
+            runnerThread = null;
+        }
     }
 
     @Override
@@ -170,232 +344,115 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             case 0: // current network bearer
                 return ReadResponse.success(resourceid, currentBearer); // Ethernet
             case 1: // network bearers
-                //Map<Integer, Long> map = new HashMap<>();
-                //map.put(0, (long) 41);
-                return ReadResponse.success(resourceid, availableBearers, ResourceModel.Type.INTEGER);
+                return ReadResponse.success(resourceid, currentAvailableBearers, ResourceModel.Type.INTEGER);
             case 2: // signal strength
-                return ReadResponse.success(resourceid, 110);
+                if (signalStrength != -1) {
+                    return ReadResponse.success(resourceid, signalStrength);
+                } else {
+                    return super.read(resourceid);
+                }
             case 3: // link quality
-                return ReadResponse.success(resourceid, linkQuality);
+                if (linkQuality != -1) {
+                    return ReadResponse.success(resourceid, linkQuality);
+                } else {
+                    return super.read(resourceid);
+                }
             case 4: // ip addresses
-                return ReadResponse.success(resourceid, ips, ResourceModel.Type.STRING);
+                if (currentIPs.size() > 0) {
+                    return ReadResponse.success(resourceid, currentIPs, ResourceModel.Type.STRING);
+                } else {
+                    return super.read(resourceid);
+                }
             case 5: // router ip
-                return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
+                if (routerIps.size() > 0) {
+                    return ReadResponse.success(resourceid, routerIps, ResourceModel.Type.STRING);
+                } else {
+                    return super.read(resourceid);
+                }
             case 6: // link utilization
-                // TODO implementation
+                if (linkUtilization != -1) {
+                    return ReadResponse.success(resourceid, linkUtilization);
+                } else {
+                    return super.read(resourceid);
+                }
             case 7: // APN
-                // TODO implementation
+                if (apn.size() > 0) {
+                    return ReadResponse.success(resourceid, apn, ResourceModel.Type.STRING);
+                } else {
+                    return super.read(resourceid);
+                }
             case 8: // Cell ID
-                // TODO implementation
+                if (cellId != -1) {
+                    return ReadResponse.success(resourceid, cellId);
+                } else {
+                    return super.read(resourceid);
+                }
             case 9: // SMNC
-                // TODO implementation
+                if (smnc != -1) {
+                    return ReadResponse.success(resourceid, smnc);
+                } else {
+                    return super.read(resourceid);
+                }
             case 10: // SMCC
-                // TODO implementation
+                if (smcc != -1) {
+                    return ReadResponse.success(resourceid, smcc);
+                } else {
+                    return super.read(resourceid);
+                }
             default:
                 return super.read(resourceid);
         }
     }
 
-    private void startUpdating() {
-        LOG.debug("Start updating resources");
-
-        linkQualityThread.start();
-
-        // update ip list
-        ipThread.start();
-
-        // update gateway IPs
-        gatewayThread.start();
-    }
-
-    private void stopUpdating() {
-        LOG.debug("Stop updating resources");
-
-        linkQualityThread.interrupt();
-        ipThread.interrupt();
-        gatewayThread.interrupt();
-    }
-
-
     /**
-     * Creates a map of available host addresses for this machine.
-     * They key in the map is an index starting from 0
+     * Allows to call fireResourcesChange to accept a List Object.
      *
-     * @return A map in the form of index:IP
+     * @param changedResources - List of resource IDs that changed
      */
-    private Map<Integer, String> getIPs() {
-        Map<Integer, String> ips = new HashMap<>();
-        try {
-            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-            int i = 0;
-            List<Integer> bearers = new LinkedList<>();
-            while (networkInterfaces.hasMoreElements()) {
-                NetworkInterface iface = networkInterfaces.nextElement();
-                if (iface.isUp()) {
-                    //LOG.debug("getIPs: checking iface {} ", gson.toJson(iface));
-
-                    // only consider interface that are up
-                    // try to get bearer kind
-                    for (String ifaceName : IFaceNameToId.keySet()) {
-                        if (iface.getDisplayName().startsWith(ifaceName)) {
-                            int bearer = IFaceNameToId.get(ifaceName);
-                            bearers.add(bearer);
-                        }
-                    }
-
-                    // get IPs
-                    Enumeration<InetAddress> inetAddresses = iface.getInetAddresses();
-                    while (inetAddresses.hasMoreElements()) {
-                        ips.put(i++, inetAddresses.nextElement().getHostAddress());
-                    }
-                }
+    public void fireResourcesChange(List<Integer> changedResources) {
+        if (changedResources.size() > 0) {
+            int[] intArray = new int[changedResources.size()];
+            for (int i = 0; i < changedResources.size(); i++) {
+                intArray[i] = changedResources.get(i);
             }
-
-            //LOG.debug("bearers: {}", gson.toJson(bearers));
-
-            // check if current bearer is 1st element in bearers
-            if (bearers.size() == 0) {
-                if (currentBearer != null) {
-                    currentBearer = null;
-                    LOG.debug("no current bearer, set to null");
-                    try {
-                        fireResourcesChange(0);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                    }
-                }
-            } else if (!bearers.get(0).equals(currentBearer)) {
-                currentBearer = bearers.get(0);
-
-                LOG.debug("current bearer has changed, set to {}", currentBearer);
-                try {
-                    fireResourcesChange(0);
-                } catch (Exception e) {
-                    //e.printStackTrace();
-                }
+            try {
+                LOG.trace("firing Resource Change for {}", Arrays.toString(intArray));
+                fireResourcesChange(intArray);
+            } catch (Exception e) {
+                //e.printStackTrace();
+                LOG.warn("Unable to fire ResourceChange for " + Arrays.toString(intArray), e);
             }
-
-            // make bearers to availableBearers
-            Map<Integer, Long> map = new HashMap<>();
-            int j = 0;
-            for (Integer bearer : bearers) {
-                map.put(j++, (long) bearer);
-            }
-
-            if (!map.equals(availableBearers)) {
-                availableBearers = map;
-                LOG.debug("available bearers have changed, set to {}", availableBearers);
-                try {
-                    fireResourcesChange(1);
-                } catch (Exception e) {
-                    //e.printStackTrace();
-                }
-            }
-        } catch (SocketException e) {
-            //e.printStackTrace();
         }
-        return ips;
     }
 
     /**
-     * Creates a map of available router addresses for this machine.
-     * They key in the map is an index starting from 0
+     * Returns a Map of the variables this class provides.
      *
-     * @return A map in the form of index:IP
+     * @return - A map of variables
      */
-    private Map<Integer, String> getGatewayIPs() {
-        Map<Integer, String> ips = new HashMap<>();
-        try {
-            Process p = Runtime.getRuntime().exec(routeCmd);
-            Scanner sc = new Scanner(p.getInputStream(), "IBM850");
+    public Map<String, Object> getVarMap() {
+        Map<String, Object> varMap = new LinkedHashMap<>();
+        varMap.put("currentBearer", currentBearer);
+        varMap.put("currentAvailableBearers", currentAvailableBearers);
+        varMap.put("signalStrength", signalStrength);
+        varMap.put("linkQuality", linkQuality);
+        varMap.put("currentIPs", currentIPs);
+        varMap.put("routerIps", routerIps);
+        varMap.put("linkUtilization", linkUtilization);
+        varMap.put("apn", apn);
+        varMap.put("cellId", cellId);
+        varMap.put("smnc", smnc);
+        varMap.put("smcc", smcc);
 
-            // "Kernel IP routing table"
-            sc.nextLine();
-
-            // Destination  Gateway     Genmask     Flags       MSS         Window      irtt        Iface
-            sc.nextLine();
-
-            // 0.0.0.0      10.147.65.1 0.0.0.0     UG          0           0           0           eth0
-            // ...
-            int i = 0;
-            while (sc.hasNextLine()) {
-                String line = sc.nextLine();
-                do {
-                    line = line.replace("  ", " ");
-                } while (line.contains("  "));
-                String[] splitLine = line.split(" ");
-                if (splitLine[3].equals("UG")) {
-                    ips.put(i++, splitLine[1]);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return ips;
+        return varMap;
     }
 
-    private Thread linkQualityThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (!Thread.interrupted()) {
-                linkQuality = r.nextInt(256);
-                try {
-                    fireResourcesChange(3);
-                } catch (Exception e) {
-                    //e.printStackTrace();
-                }
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-        }
-    });
-
-    private Thread ipThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (!Thread.interrupted()) {
-                Map<Integer, String> newIps = getIPs();
-                if (!newIps.equals(ips)) {
-                    ips = newIps;
-                    try {
-                        fireResourcesChange(4);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                    }
-                }
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-        }
-    });
-
-    private Thread gatewayThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (!Thread.interrupted()) {
-                Map<Integer, String> newGatewayIPs = getGatewayIPs();
-                if (!newGatewayIPs.equals(routerIps)) {
-                    routerIps = newGatewayIPs;
-                    try {
-                        fireResourcesChange(5);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                    }
-                }
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-        }
-    });
+    /**
+     * Convert this instance to a JSON String.
+     *
+     * @return JSON String representation of this instance
+     */
+    public String toJson() {
+        return Utils.gson.toJson(getVarMap());
+    }
 }

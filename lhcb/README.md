@@ -51,4 +51,4 @@ option                      | description
 -host, -h                   | set LHCB Broker Host Name
 -port, -p                   | set LHCB Broker CoAP Port
 -dummy, -d                  | provide dummy data instead of real data
-
+-name, -n                   | set client (endpoint) name

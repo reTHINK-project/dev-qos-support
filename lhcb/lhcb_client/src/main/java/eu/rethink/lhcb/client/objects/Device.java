@@ -50,7 +50,7 @@ public class Device extends BaseInstanceEnabler {
         return rand.nextInt(50) + 114;
     }
 
-    private String utcOffset = new SimpleDateFormat("X").format(Calendar.getInstance().getTime());
+    private String utcOffset = new SimpleDateFormat().format(Calendar.getInstance().getTime());
 
     private String getUtcOffset() {
         return utcOffset;
