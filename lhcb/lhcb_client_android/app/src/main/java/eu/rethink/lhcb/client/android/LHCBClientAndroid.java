@@ -67,21 +67,21 @@ public class LHCBClientAndroid extends AppCompatActivity {
             @Override
             public void run() {
                 Random r = new Random();
-                while (!Thread.interrupted()) {
-                    //final String text = String.valueOf(r.nextInt());
-                    final String text = cmInstance.toJson();
-                    //LOG.debug("setting text: {}", text);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            conMonState.setText(text);
-                        }
-                    });
-                    try {
+                try {
+                    while (!Thread.interrupted()) {
+                        //final String text = String.valueOf(r.nextInt());
+                        final String text = cmInstance.toJson();
+                        //LOG.debug("setting text: {}", text);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                conMonState.setText(text);
+                            }
+                        });
                         Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
                     }
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
                 }
             }
         });
@@ -109,7 +109,9 @@ public class LHCBClientAndroid extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (lhcbClient != null)
+        if (lhcbClient != null) {
             lhcbClient.stop();
+            lhcbClient.getConnectivityMonitorInstance().stopRunner();
+        }
     }
 }

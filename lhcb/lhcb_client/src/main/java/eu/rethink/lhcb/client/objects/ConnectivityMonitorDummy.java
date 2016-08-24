@@ -18,10 +18,12 @@
 
 package eu.rethink.lhcb.client.objects;
 
+import eu.rethink.lhcb.client.util.Bearers;
+import eu.rethink.lhcb.client.util.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Random;
+import java.util.*;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object with Dummy values
@@ -33,7 +35,6 @@ public class ConnectivityMonitorDummy extends ConnectivityMonitor {
     private Runnable randomizerRunner = new Runnable() {
         @Override
         public void run() {
-            LOG.info("randomizerRunner running");
             linkQuality = r.nextInt(8);
             signalStrength = r.nextInt(64);
             linkUtilization = r.nextInt(100);
@@ -42,32 +43,33 @@ public class ConnectivityMonitorDummy extends ConnectivityMonitor {
             } catch (Exception e) {
                 //e.printStackTrace();
             }
-            LOG.info("randomizerRunner done");
         }
     };
 
     public ConnectivityMonitorDummy() {
 
-        // 00
-        currentBearer = 2;
+        // 00 && 01
+        List<Tuple<String, Integer>> bearers = new LinkedList<>();
+        bearers.add(new Tuple<>("cel0", 2));
+        bearers.add(new Tuple<>("eth0", 41));
+        bearers.add(new Tuple<>("eth1", 41));
+        bearers.add(new Tuple<>("wlan0", 21));
+        bearers.add(new Tuple<>("cel1", 1));
+        bearers.add(new Tuple<>("cel2", 5));
 
-        // 01
-        currentAvailableBearers.put(0, (long) 1);
-        currentAvailableBearers.put(1, (long) 2);
-        currentAvailableBearers.put(3, (long) 5);
-        currentAvailableBearers.put(4, (long) 21);
-        currentAvailableBearers.put(5, (long) 41);
+        // 04
+        Map<Integer, String> currentIPs = new HashMap<>();
+        currentIPs.put(0, "192.168.133.37");
+        currentIPs.put(1, "192.168.133.38");
+        currentIPs.put(2, "192.168.133.39");
+
+        currentBearers = new Bearers(bearers, currentIPs);
 
         // 02
         signalStrength = r.nextInt(64);
 
         // 03
         linkQuality = r.nextInt(8);
-
-        // 04
-        currentIPs.put(0, "192.168.133.37");
-        currentIPs.put(1, "192.168.133.38");
-        currentIPs.put(2, "192.168.133.39");
 
         // 05
         routerIps.put(0, "192.168.133.1");

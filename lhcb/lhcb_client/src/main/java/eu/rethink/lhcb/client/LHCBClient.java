@@ -100,12 +100,21 @@ public class LHCBClient {
     }
 
     /**
-     * Instance to be used for the ConnectivityMonitoring.
+     * Set instance to be used for the ConnectivityMonitoring.
      *
      * @param connectivityMonitorInstance - ConnectivityMonitor instance to be used
      */
     public void setConnectivityMonitorInstance(ConnectivityMonitor connectivityMonitorInstance) {
         this.connectivityMonitorInstance = connectivityMonitorInstance;
+    }
+
+    /**
+     * Get instance to be used for the ConnectivityMonitoring.
+     *
+     * @return a ConnectivityMonitor instance, or null
+     */
+    public ConnectivityMonitor getConnectivityMonitorInstance() {
+        return connectivityMonitorInstance;
     }
 
     /**
@@ -148,6 +157,7 @@ public class LHCBClient {
             connectivityMonitorInstance = new ConnectivityMonitorSimple();
 
         connectivityMonitorInstance.startRunner();
+        connectivityMonitorInstance.setupWebSocketServer();
 
         initializer.setInstancesForObject(4, connectivityMonitorInstance);
         //initializer.setInstancesForObject(3000, new ExtendedDevice());

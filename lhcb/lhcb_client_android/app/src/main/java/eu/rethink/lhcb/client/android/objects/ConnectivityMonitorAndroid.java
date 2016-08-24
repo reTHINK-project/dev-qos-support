@@ -23,7 +23,8 @@ import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Extension of ConnectivityMonitor with Android specific Runnables.
@@ -40,18 +41,20 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
     private Runnable wifiRunner = new Runnable() {
         @Override
         public void run() {
-            ArrayList<Integer> changedResources = new ArrayList<>(2);
+            Set<Integer> changedResources = new LinkedHashSet<>(2);
             WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 
             int newSignalStrength = WifiManager.calculateSignalLevel(wifiManager.getConnectionInfo().getRssi(), 64);
             int newLinkQuality = wifiManager.getConnectionInfo().getLinkSpeed();
 
             if (signalStrength != newSignalStrength) {
+                LOG.trace("signalStrength has changed: {} -> {}", signalStrength, newSignalStrength);
                 signalStrength = newSignalStrength;
                 changedResources.add(2);
             }
 
             if (linkQuality != newLinkQuality) {
+                LOG.trace("linkQuality has changed: {} -> {}", linkQuality, newLinkQuality);
                 linkQuality = newLinkQuality;
                 changedResources.add(3);
             }
