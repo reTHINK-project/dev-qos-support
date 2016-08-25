@@ -16,34 +16,14 @@
  *
  */
 
-package eu.rethink.lhcb.client.util;
+package eu.rethink.lhcb.client.objects;
 
-public class Tuple<X, Y> {
-    public final X x;
-    public final Y y;
+/**
+ * A simple extension of ConnectivityMonitor that has some Runnables added to the runnables list.
+ */
+public class ConnectivityMonitorSimple extends ConnectivityMonitor {
 
-    public Tuple(X x, Y y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    @Override
-    public String toString() {
-        return "(" + x + "," + y + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == this)
-            return true;
-        else if (o instanceof Tuple) {
-            try {
-                return x.equals(((Tuple) o).x) && y.equals(((Tuple) o).y);
-            } catch (Exception e) {
-                return false;
-            }
-        } else {
-            return false;
-        }
+    public ConnectivityMonitorSimple() {
+        addToRunner(ipRunner, gatewayRunner, iwconfigRunner);
     }
 }

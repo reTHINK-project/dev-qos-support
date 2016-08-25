@@ -21,6 +21,7 @@ package eu.rethink.lhcb.broker;
 import eu.rethink.lhcb.broker.provider.CustomModelProvider;
 import eu.rethink.lhcb.broker.servlet.EventServlet;
 import eu.rethink.lhcb.broker.servlet.WellKnownServlet;
+import org.eclipse.californium.core.network.config.NetworkConfig;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.webapp.WebAppContext;
@@ -28,6 +29,7 @@ import org.eclipse.leshan.server.californium.LeshanServerBuilder;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 /**
  * Last Hop Connectivity Broker - Broker module implementation
@@ -123,6 +125,11 @@ public class LHCBBroker {
     }
 
     public void start() {
+        // setup SLF4JBridgeHandler needed for proper logging
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+        // don't let Californium use file
+        NetworkConfig.createStandardWithoutFile();
         // create Leshan server
         LeshanServerBuilder lsb = new LeshanServerBuilder();
         lsb.setLocalAddress("0", coapPort);

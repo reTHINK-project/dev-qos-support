@@ -24,10 +24,16 @@ import eu.rethink.lhcb.client.util.Utils;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
+import org.java_websocket.WebSocket;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Implementation of the Connectivity Monitoring LwM2M Object
@@ -136,14 +142,10 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     */
     private static final Logger LOG = LoggerFactory.getLogger(ConnectivityMonitor.class);
 
+    public Bearers currentBearers = new Bearers(new LinkedList<Tuple<String, Integer>>(), new LinkedHashMap<Integer, String>());
+    public int signalStrength = 64;
     public int linkQuality = -1;
-    public int signalStrength = -1;
-    public Map<Integer, String> currentIPs = new HashMap<>();
     public Map<Integer, String> routerIps = new HashMap<>();
-    public Bearers currentBearers = null;
-    public int currentBearer = -1;
-    public Map<Integer, Long> currentAvailableBearers = new HashMap<>();
-    public int sleepTime = 2000;
 
     // cellular stuff
     public int linkUtilization = -1;
@@ -151,27 +153,231 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     public int cellId = -1;
     public int smnc = -1;
     public int smcc = -1;
+    public int sleepTime = 2000;
 
-    public void init() {
-        LOG.debug("initializing ConnectivityMonitor");
-        iwconfigThread.start();
+    /*
+    Runners
+     */
+    public final Runnable iwconfigRunner = new Runnable() {
+        @Override
+        public void run() {
+            Set<Integer> changedResources = new LinkedHashSet<>();
+            if (currentBearers != null) {
+                Tuple<String, Integer> cb = currentBearers.getCurrentBearer();
+                if (cb != null) {
+                    Tuple<Integer, Integer> lqss = Utils.getLinkQualityAndSignalStrength(cb.x);
 
-        // update ip list
-        ipThread.start();
+                    if (linkQuality != lqss.x) {
+                        LOG.trace("linkQuality has changed: {} -> {}", linkQuality, lqss.x);
+                        linkQuality = lqss.x;
+                        changedResources.add(3);
+                    }
 
-        // update gateway IPs
-        gatewayThread.start();
+                    if (signalStrength != lqss.y) {
+                        LOG.trace("signalStrength has changed: {} -> {}", signalStrength, lqss.y);
+                        signalStrength = lqss.y;
+                        changedResources.add(2);
+                    }
+
+                    if (changedResources.size() > 0)
+                        fireResourcesChange(changedResources);
+                }
+            }
+        }
+    };
+
+    public final Runnable ipRunner = new Runnable() {
+        @Override
+        public void run() {
+            Set<Integer> changedResources = new LinkedHashSet<>();
+            Bearers bearers = Utils.getBearers();
+
+            if (!bearers.ips.equals(currentBearers.ips)) {
+                LOG.trace("current IPs have changed: {} -> {}", currentBearers.ips, bearers.ips);
+                changedResources.add(4);
+            }
+
+            // 1. check if amount of bearers is different from current bearers
+            // 2. [since bearer size is the same] check if there is a current bearer and if it equals the last "current" bearer
+            if (bearers.bearers.size() - currentBearers.bearers.size() != 0 || (bearers.bearers.size() > 0 && !bearers.getCurrentBearer().x.equals(currentBearers.getCurrentBearer().x))) {
+                LOG.trace("current bearer has changed: {} -> {}", currentBearers.getCurrentBearer(), bearers.getCurrentBearer());
+                changedResources.add(0);
+            }
+
+            // check if bearers changed
+            if (!bearers.bearers.equals(currentBearers.bearers)) {
+                LOG.trace("available bearers have changed: {} -> {}", currentBearers.bearers, bearers.bearers);
+                changedResources.add(1);
+            }
+
+            currentBearers = bearers;
+
+            if (changedResources.size() > 0)
+                fireResourcesChange(changedResources);
+        }
+    };
+
+    public final Runnable gatewayRunner = new Runnable() {
+        @Override
+        public void run() {
+            Map<Integer, String> newGatewayIPs = Utils.getGatewayIPs();
+            if (!newGatewayIPs.equals(routerIps)) {
+                LOG.trace("routerIPs have changed: {} -> {}", routerIps, newGatewayIPs);
+                routerIps = newGatewayIPs;
+                try {
+                    fireResourcesChange(5);
+                } catch (Exception e) {
+                    //e.printStackTrace();
+                    LOG.warn("Unable to fire ResourceChange for Gateway IPs (#5)", e);
+                }
+            }
+        }
+    };
+
+    // runner related
+    private List<Runnable> runnables = new CopyOnWriteArrayList<>();
+    private Thread runnerThread = null;
+    private WebSocketServer wss;
+
+    /**
+     * Setup a WebSocketServer to retrieve the current state of this instance through it.
+     */
+    public void setupWebSocketServer() {
+        if (wss != null) {
+            LOG.warn("WebSocketServer already exists! Resetting...");
+            try {
+                wss.stop();
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        wss = new WebSocketServer(new InetSocketAddress(7331)) {
+            private final Logger LOG = LoggerFactory.getLogger(WebSocketServer.class);
+
+            @Override
+            public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
+                LOG.debug("onOpen: {}", webSocket);
+                webSocket.send(toJson());
+            }
+
+            @Override
+            public void onClose(WebSocket webSocket, int i, String s, boolean b) {
+                LOG.debug("onClose: {}", webSocket);
+
+            }
+
+            @Override
+            public void onMessage(WebSocket webSocket, String s) {
+                LOG.debug("onMessage: {}", webSocket);
+                if (s.equals("another one"))
+                    webSocket.send(toJson());
+
+            }
+
+            @Override
+            public void onError(WebSocket webSocket, Exception e) {
+                LOG.debug("onError: {}", webSocket);
+
+            }
+        };
+        wss.start();
+        LOG.debug("WebSocketServer running. Address: {}", wss.getAddress());
+    }
+
+    /**
+     * Adds one or more Runnables to the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables - One or more Runnables to add to the list
+     */
+    public void addToRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            if (this.runnables.contains(runnable)) {
+                LOG.trace("Runnable already in runnables list {}", runnable);
+            } else {
+                this.runnables.add(runnable);
+            }
+        }
+    }
+
+    /**
+     * Removes one or more Runnables from the list of Runnables that the Runner Thread is supposed to run.
+     *
+     * @param runnables - One or more Runnables to remove from the list
+     */
+    public void removeFromRunner(Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            this.runnables.remove(runnable);
+        }
+    }
+
+    /**
+     * Start the Runner Thread.
+     */
+    public void startRunner() {
+        if (runnerThread != null) {
+            LOG.info("Runner Thread is already running");
+            return;
+            //stopRunner();
+        }
+
+        runnerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                long startTime, endTime, diff;
+                int skips;
+                try {
+                    while (!Thread.interrupted()) {
+                        startTime = System.currentTimeMillis();
+                        for (int i = 0; i < runnables.size(); i++) {
+                            try {
+                                runnables.get(i).run();
+                            } catch (Exception e) {
+                                //e.printStackTrace();
+                                LOG.warn("Runnable #" + i + " crashed:", e);
+                            }
+                        }
+                        endTime = System.currentTimeMillis();
+                        diff = endTime - startTime;
+                        LOG.trace("RunnerThread: Needed {}ms for {} runnables", diff, runnables.size());
+                        skips = 0;
+                        while (sleepTime - diff < 0) {
+                            skips++;
+                            diff -= sleepTime;
+                        }
+
+                        if (skips > 0) {
+                            LOG.trace("RunnerThread: Skipping sleep {} time(s)", skips);
+                        }
+                        Thread.sleep(sleepTime - diff);
+                    }
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
+                }
+            }
+        });
+
+        runnerThread.start();
+    }
+
+    /**
+     * Stop the Runner Thread.
+     */
+    public void stopRunner() {
+        if (runnerThread != null) {
+            runnerThread.interrupt();
+            runnerThread = null;
+        }
     }
 
     @Override
     public ReadResponse read(int resourceid) {
         switch (resourceid) {
             case 0: // current network bearer
-                return ReadResponse.success(resourceid, currentBearer); // Ethernet
+                return ReadResponse.success(resourceid, currentBearers.getCurrentBearerInt()); // Ethernet
             case 1: // network bearers
-                //Map<Integer, Long> map = new HashMap<>();
-                //map.put(0, (long) 41);
-                return ReadResponse.success(resourceid, currentAvailableBearers, ResourceModel.Type.INTEGER);
+
+                return ReadResponse.success(resourceid, currentBearers.getBearersMap(), ResourceModel.Type.INTEGER);
             case 2: // signal strength
                 if (signalStrength != -1) {
                     return ReadResponse.success(resourceid, signalStrength);
@@ -185,8 +391,8 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
                     return super.read(resourceid);
                 }
             case 4: // ip addresses
-                if (currentIPs.size() > 0) {
-                    return ReadResponse.success(resourceid, currentIPs, ResourceModel.Type.STRING);
+                if (currentBearers.ips.size() > 0) {
+                    return ReadResponse.success(resourceid, currentBearers.ips, ResourceModel.Type.STRING);
                 } else {
                     return super.read(resourceid);
                 }
@@ -231,131 +437,21 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         }
     }
 
-    private Thread ipThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("ipThread running");
-
-            ArrayList<Integer> changedResources = new ArrayList<>();
-            while (!Thread.interrupted()) {
-                Bearers bearers = Utils.getBearers();
-                currentBearers = bearers;
-                if (!bearers.ips.equals(currentIPs)) {
-                    currentIPs = bearers.ips;
-                    LOG.debug("current IPs have changed, set to {}", currentIPs);
-                    changedResources.add(4);
-                }
-
-                // check if current bearer is 1st element in bearers
-                if (bearers.bearers.size() == 0) {
-                    if (currentBearer != -1) {
-                        currentBearer = -1;
-                        LOG.debug("no current bearer, set to -1");
-                        changedResources.add(0);
-                    }
-                } else if (!bearers.bearers.get(0).y.equals(currentBearer)) {
-                    currentBearer = bearers.bearers.get(0).y;
-                    LOG.debug("current bearer has changed, set to {}", currentBearer);
-                    changedResources.add(0);
-                }
-
-                // make bearers to currentAvailableBearers
-                Map<Integer, Long> map = new HashMap<>();
-                int j = 0;
-                for (Tuple<String, Integer> bearer : bearers.bearers) {
-                    map.put(j++, (long) bearer.y);
-                }
-
-                if (!map.equals(currentAvailableBearers)) {
-                    currentAvailableBearers = map;
-                    LOG.debug("available bearers have changed, set to {}", currentAvailableBearers);
-                    changedResources.add(1);
-                }
-
-                fireResourcesChange(changedResources);
-                changedResources.clear();
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("ipThread done");
-        }
-    });
-
-    private Thread gatewayThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("gatewayThread running");
-
-            while (!Thread.interrupted()) {
-                Map<Integer, String> newGatewayIPs = Utils.getGatewayIPs();
-                if (!newGatewayIPs.equals(routerIps)) {
-                    routerIps = newGatewayIPs;
-                    try {
-                        fireResourcesChange(5);
-                    } catch (Exception e) {
-                        //e.printStackTrace();
-                        LOG.warn("Unable to fire ResourceChange for Gateway IPs (#5)", e);
-                    }
-                }
-
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("gatewayThread done");
-        }
-    });
-
-    private Thread iwconfigThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-            LOG.info("iwconfigThread running");
-            ArrayList<Integer> changedResources = new ArrayList<>();
-            while (!Thread.interrupted()) {
-                if (currentBearers != null) {
-                    Tuple<String, Integer> cb = currentBearers.getCurrentBearer();
-                    if (cb != null) {
-                        Tuple<Integer, Integer> lqss = Utils.getLinkQualityAndSignalStrength(cb.x);
-
-                        if (linkQuality != lqss.x) {
-                            linkQuality = lqss.x;
-                            changedResources.add(2);
-                        }
-
-                        if (signalStrength != lqss.y) {
-                            signalStrength = lqss.y;
-                            changedResources.add(3);
-                        }
-
-                        fireResourcesChange(changedResources);
-                        changedResources.clear();
-
-                    }
-                }
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    //e.printStackTrace();
-                }
-            }
-            LOG.info("iwconfigThread done");
-        }
-    });
-
-    public void fireResourcesChange(List<Integer> changedResources) {
+    /**
+     * Allows to call fireResourcesChange to accept a Set.
+     *
+     * @param changedResources - Set of resource IDs that changed
+     */
+    public void fireResourcesChange(Set<Integer> changedResources) {
         if (changedResources.size() > 0) {
             int[] intArray = new int[changedResources.size()];
-            for (int i = 0; i < changedResources.size(); i++) {
-                intArray[i] = changedResources.get(i);
+            int i = 0;
+            for (Integer changedResource : changedResources) {
+                intArray[i++] = changedResource;
             }
+
             try {
-                LOG.debug("firing Resource Change for {}", Arrays.toString(intArray));
+                LOG.trace("firing Resource Change for {}", Arrays.toString(intArray));
                 fireResourcesChange(intArray);
             } catch (Exception e) {
                 //e.printStackTrace();
@@ -364,13 +460,18 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         }
     }
 
+    /**
+     * Returns a Map of the variables this class provides.
+     *
+     * @return - A map of variables
+     */
     public Map<String, Object> getVarMap() {
         Map<String, Object> varMap = new LinkedHashMap<>();
-        varMap.put("currentBearer", currentBearer);
-        varMap.put("currentAvailableBearers", currentAvailableBearers);
+        varMap.put("currentBearer", currentBearers.getCurrentBearerInt());
+        varMap.put("currentAvailableBearers", currentBearers.getBearersMap());
         varMap.put("signalStrength", signalStrength);
         varMap.put("linkQuality", linkQuality);
-        varMap.put("currentIPs", currentIPs);
+        varMap.put("currentIPs", currentBearers.ips);
         varMap.put("routerIps", routerIps);
         varMap.put("linkUtilization", linkUtilization);
         varMap.put("apn", apn);
@@ -381,6 +482,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         return varMap;
     }
 
+    /**
+     * Convert this instance to a JSON String.
+     *
+     * @return JSON String representation of this instance
+     */
     public String toJson() {
         return Utils.gson.toJson(getVarMap());
     }
