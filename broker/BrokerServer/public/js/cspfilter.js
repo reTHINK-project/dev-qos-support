@@ -1,5 +1,9 @@
 angular.module('cspFilters', []).filter('cspfilter', function() {
   return function(input) {
-    return input.split(":")[1];
+    if (input != null) {
+      return input.split(":")[1];
+    } else {
+      return "";
+    }
   };
 });

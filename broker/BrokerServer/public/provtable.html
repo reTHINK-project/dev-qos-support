@@ -24,7 +24,7 @@
         <td>
             <span>{{ csp.dataQuota | bytes:csplist.filteringUnit }} {{csplist.filteringUnit}}</span>
         </td>
-        <td ng-class="{red: csp.datapercent > 90}">
+        <td ng-class="{orange: (csp.datapercent > 90) && (csp.datapercent < 100), red: csp.datapercent >= 100}">
             <img class="trendup" src="img/ic_trending_up_black_48px.svg" ng-show="csp.datahasrisen"/>
             <span class="verticalAlign">{{ csp.dataconsumed || 0  | bytes:csplist.filteringUnit}}  {{csplist.filteringUnit}}</span>
         </td>

@@ -95,6 +95,12 @@ body{
     text-shadow:none;
 }
 
+.orange {
+    background: rgba(242,144,61,1);
+    color: #FFF;
+    text-shadow: 1px 1px 1px #777;
+}
+
 .red {
     background: rgba(242,61,73,1);
     color: #FFF;
