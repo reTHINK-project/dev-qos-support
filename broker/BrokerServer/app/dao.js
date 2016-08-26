@@ -179,7 +179,7 @@ redisDAO.prototype.getAppropriateTurn = function(cspName, clientname){
         dao.getCspInfoAndConso(cspName).then(function(result) {
             console.log("CSP=" + result.cspName + " dataQuota="+result.dataQuota + " dataConso="+result.dataConso);
 
-            if (result.dataConso > result.dataQuota) {
+            if (Number(result.dataConso) > Number(result.dataQuota)) {
                 console.info("CSP:"+cspName+" data consumed exceeds provisioned quota");
                 throw("data consumption exceeded");
             } else {
