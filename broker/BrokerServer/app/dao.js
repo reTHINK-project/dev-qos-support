@@ -168,12 +168,11 @@ function redisDAO(port, host){
 redisDAO.prototype.getAppropriateTurn = function(cspName, clientname){
     console.info("#### getAppropriateTurn, cspName=" + cspName + " client name="+clientname);
 
-    var clientId = MD5(cspName+':'+clientname + new Date().toISOString()).toString();
-    console.log("clientId generated : " + clientId);
-
     var dao = this;
 
-    var consoData = 0;
+    var clientId = MD5(cspName+':'+clientname + new Date().toISOString()).toString();
+    console.log("clientId generated : " + clientId);
+    dao.registerUser(cspName,clientId);
 
     return new Promise(function(resolve, reject){
 
@@ -426,7 +425,7 @@ redisDAO.prototype.createTurnCredentials = function(clientId){
  * @return {object} reply associative array containing audio, video and data quotas
  */
 redisDAO.prototype.getCSPInfos = function(cspkey){
-    //console.info("#### getCSPInfos, cspkey="+cspkey);
+    console.info("#### getCSPInfos, cspkey="+cspkey);
 
     // Requests to prov:csp
     var dao = this.client;

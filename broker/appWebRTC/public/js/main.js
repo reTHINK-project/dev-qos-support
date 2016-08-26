@@ -28,12 +28,12 @@
  *
  */
 
-//var BROKERURL = "https://10.193.5.91:8181";
-var BROKERURL = "https://localhost:8181";
+var BROKERURL = "https://10.193.5.91:8181";
+//var BROKERURL = "https://localhost:8181";
 
 // RTCSERVICEURL : IP Address (port) of the server that will host the webrtc app
-//var RTCSERVICEURL = "https://10.193.5.91:8080";
-var RTCSERVICEURL = "https://localhost:8080";
+var RTCSERVICEURL = "https://10.193.5.91:8080";
+//var RTCSERVICEURL = "https://localhost:8080";
 
 // CSPNAME : the one defined by admin in the dashboard
 var CSPNAME = "reThinkTestCSP";
