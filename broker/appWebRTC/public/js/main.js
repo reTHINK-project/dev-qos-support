@@ -28,13 +28,16 @@
  *
  */
 
-var BROKERURL = "https://10.193.5.93:8181";
+//var BROKERURL = "https://10.193.5.91:8181";
+var BROKERURL = "https://localhost:8181";
 
 // RTCSERVICEURL : IP Address (port) of the server that will host the webrtc app
-var RTCSERVICEURL = "https://10.193.5.93:8080";
+//var RTCSERVICEURL = "https://10.193.5.91:8080";
+var RTCSERVICEURL = "https://localhost:8080";
 
 // CSPNAME : the one defined by admin in the dashboard
 var CSPNAME = "reThinkTestCSP";
+//var CSPNAME = "test2";
 var CLIENTNAME = "RealTimeVideoCall";
 
 var localStream = null;
@@ -287,10 +290,10 @@ function startupBehavior(RTCPeerConfiguration){
         audio: 'true'
     };
     console.info('Getting user media with constraints', constraints);
-    /*navigator.mediaDevices.getUserMedia(constraints)
+    navigator.mediaDevices.getUserMedia(constraints)
         .then(handleUserMedia)
-        .catch(handleUserMediaError);*/
-    navigator.getUserMedia(constraints,handleUserMedia,handleUserMediaError);
+        .catch(handleUserMediaError);
+    // navigator.getUserMedia(constraints,handleUserMedia,handleUserMediaError);
     if (room !== '') {
         console.info('Create or join room', room);
         socket.emit('create or join', room);
@@ -350,6 +353,7 @@ function startupBehavior(RTCPeerConfiguration){
 }
 
 $(document).ready(
+//    console.log("Request for a QoS Turn");
     $.get(BROKERURL+"/getAppropriateTurn",
         {
             cspId:CSPNAME,
@@ -376,7 +380,9 @@ $(document).ready(
             startupBehavior(RTCPeerConfiguration);
         });
     })
-    .fail(function(){
+    .fail(function(err){
+        console.error("Error during request for a QoS Turn : " + err.status + " " + err.responseText);
+
         //Only 404 supported now
         startupBehavior();
     })

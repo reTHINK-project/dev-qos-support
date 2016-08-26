@@ -165,29 +165,53 @@ function redisDAO(port, host){
  * @callback callback - Callback function to deal with the result (queries are async)
  * @param {string} csp - ClientId of the csp
  */
-redisDAO.prototype.getAppropriateTurn = function(csp,clientname){
-    var clientId = MD5(csp+':'+clientname + new Date().toISOString()).toString();
-    //Switching to DB 2
+redisDAO.prototype.getAppropriateTurn = function(cspName, clientname){
+    console.info("#### getAppropriateTurn, cspName=" + cspName + " client name="+clientname);
+
+    var clientId = MD5(cspName+':'+clientname + new Date().toISOString()).toString();
+    console.log("clientId generated : " + clientId);
+
     var dao = this;
-    this.registerUser(csp,clientId);
+
+    var consoData = 0;
+
     return new Promise(function(resolve, reject){
-        dao.getTurnServers().then(function(res,err){
-            if(err){
-                reject(err);
+
+        dao.getCspInfoAndConso(cspName).then(function(result) {
+            console.log("CSP=" + result.cspName + " dataQuota="+result.dataQuota + " dataConso="+result.dataConso);
+
+            if (result.dataConso > result.dataQuota) {
+                console.info("CSP:"+cspName+" data consumed exceeds provisioned quota");
+                throw("data consumption exceeded");
+            } else {
+                // data consumption doesn't exceed provisioned quota
+                return;
             }
-            else {
-                var availableTurnServers = res;
-                //Filtering the key "turnservers:"
-                for (var turnServersIndex =0; turnServersIndex <availableTurnServers.length; turnServersIndex++){
-                    availableTurnServers[turnServersIndex] = availableTurnServers[turnServersIndex].turnUrl.replace("turnservers:","");
+        }).then(function() {
+
+	    dao.getTurnServers().then(function(res,err) {
+                if(err){
+                    console.log("Unable to find a Turn server : " + err);
+                    reject(err);
+                } else {
+                    var availableTurnServers = res;
+                    //Filtering the key "turnservers:"
+                    for (var turnServersIndex =0; turnServersIndex <availableTurnServers.length; turnServersIndex++){
+                        availableTurnServers[turnServersIndex] = availableTurnServers[turnServersIndex].turnUrl.replace("turnservers:","");
+                    }
+                    var randomIndex = Math.floor((Math.random() * availableTurnServers.length));
+                    resolve([availableTurnServers[randomIndex],clientId]);
                 }
-                var randomIndex = Math.floor((Math.random() * availableTurnServers.length));
-                resolve([availableTurnServers[randomIndex],clientId]);
-            }
-        })
-        .catch(function(err){
-            reject(err);
-	});
+            })
+            .catch(function(err){
+                console.log("Error when retrieving turnservers, error : " + err);
+                reject(err);
+            });
+
+        }).catch(function(err){
+            console.log("Unable to get a turn server : " + err);
+            reject("Unable to get a turn server : " + err);
+        });
     });
 };
 
@@ -214,6 +238,8 @@ redisDAO.prototype.getCredentials = function(clientId){
  * @return {object{}} {"clientId":clientId,"TTL":TTL}
  */
 redisDAO.prototype.registerCSP = function(formDatas, TTL){
+    console.info("#### registerCSP, csp=" + formDatas.servicename);
+
     var clientIdHash = formDatas.servicename;
     var redisKey = 'prov:'+clientIdHash;
     var dao = this;
@@ -257,6 +283,8 @@ redisDAO.prototype.registerCSP = function(formDatas, TTL){
  * @param {string} user user to match with the csp
  */
 redisDAO.prototype.registerUser = function(csp, user){
+    console.info("#### registerUser, csp name=" + csp + " user="+user);
+
     this.client.select(2, function(){});
     var redisKey = 'users:'+ user;
     this.client.set(redisKey,csp,function(){});
@@ -280,15 +308,23 @@ redisDAO.prototype.psubscribe = function(pattern){
  * @reject {string} err error during one of the requests
  */
 redisDAO.prototype.getAllCspInfo = function(){
+    //console.info("#### getAllCspInfo");
+
     var infos = [];
     var provKeys;
+    var consoKey;
+    var dataConso;
     var dao = this.client;
     return new Promise(function(resolve, reject){
         dao.select(2, function(){});
         dao.keys('prov:*',function(err,reply){
+            // reply has the following format :
+            // prov:csp1,prov:csp1:conso,prov:csp2:conso,prov:csp2
+
             provKeys = [];
             for( var replyindex = 0; replyindex < reply.length; replyindex ++){
                 if(!reply[replyindex].match('.*:conso')){
+                    //console.log("CSP found : " + reply[replyindex]);
                     provKeys.push(reply[replyindex]);
                 }
             }
@@ -303,7 +339,10 @@ redisDAO.prototype.getAllCspInfo = function(){
                                 }
                                 var info = reply;
                                 info.csp = this.args[0];
+                                //console.log("CSP="+info.csp+ " dataQuota="+info.dataQuota+ " conso=" + info.conso);
+
                                 infos.push(info);
+
                                 if(Object.keys(infos).length === provKeys.length){
                                     resolve(infos);
                                 }
@@ -314,6 +353,47 @@ redisDAO.prototype.getAllCspInfo = function(){
         });
     });
 };
+
+
+/**
+ * get basic infos (quotas) and  consumption value for a given cspkey
+ *
+ * @param {string} cspkey key of the csp in the database
+ *
+ * @return {object} reply associative array containing audio, video and data quotas and audio, video and data consumptions
+ * @reject {string} err error during one of the requests
+ */
+redisDAO.prototype.getCspInfoAndConso = function(cspName) {
+    //console.info("#### getCspInfoAndConso, cspName="+cspName);
+
+    var dao = this;
+    var cspInfos;
+
+    return new Promise(function(resolve, reject){
+
+        var cspKey = "prov:"+cspName;
+        console.log("cspKey="+cspKey);
+
+        dao.getCSPInfos(cspKey).then(function(reply) {
+            cspInfos = reply;
+            cspInfos.cspName = cspName;
+
+            dao.getCSPConso(cspKey).then(function(consoResult) {
+                cspInfos.dataConso = consoResult.data;
+                resolve(cspInfos);
+
+            }).catch(function(err) {
+                console.log("consumption not found for CSP ["+cspName+"]");
+                reject("CSP consumption unknown");
+            });
+
+        }).catch(function(err) {
+            console.log("CSP ["+cspName+"] not found");
+            reject("CSP not found");
+        });
+    });
+};
+
 
 
 /**
@@ -340,18 +420,46 @@ redisDAO.prototype.createTurnCredentials = function(clientId){
 };
 
 /**
+ * Gets the informations associated to a given cspkey
+ * @param {string} cspkey key of the csp in the database
+ *
+ * @return {object} reply associative array containing audio, video and data quotas
+ */
+redisDAO.prototype.getCSPInfos = function(cspkey){
+    //console.info("#### getCSPInfos, cspkey="+cspkey);
+
+    // Requests to prov:csp
+    var dao = this.client;
+    return new Promise(function(resolve, reject){
+        dao.selectAsync(2)
+        .then(function(){
+            dao.hgetall(cspkey,function(err,reply){
+                if (err){
+                    reject(err);
+                } else {
+                    resolve(reply);
+                }
+            });
+        });
+    });
+};
+
+
+/**
  * Gets the consumption value for a given cspkey
  * @param {string} cspkey key of the csp in the database
  *
  * @return {object} reply associative array containing audio, video and data consumptions
  */
-redisDAO.prototype.getCSPConso = function(cspkey){
+redisDAO.prototype.getCSPConso = function(cspConsoKey){
+    //console.info("#### getCSPConso, cspConsoKey="+cspConsoKey);
+
     // Requests to prov:csp:conso
     var dao = this.client;
     return new Promise(function(resolve, reject){
         dao.selectAsync(2)
         .then(function(){
-            dao.hgetall(cspkey+":conso",function(err,reply){
+            dao.hgetall(cspConsoKey+":conso",function(err,reply){
                 if (err){
                     reject(err);
                 } else {
@@ -369,6 +477,8 @@ redisDAO.prototype.getCSPConso = function(cspkey){
  * @return {array} reply list of all the turnservers api (on future impl, may add additional values like charge)
  */
 redisDAO.prototype.getTurnServers = function(){
+    //console.info("#### getTurnServers");
+
     var dao = this.client;
     return new Promise(function(resolve,reject){
         dao.selectAsync(2)
@@ -438,6 +548,7 @@ redisDAO.prototype.deleteCSP = function(cspkey){
  */
 redisDAO.prototype.updateCSPQuotas = function(cspkey,audioQuota,videoQuota,dataQuota){
     var dao = this.client;
+
     return new Promise(function(resolve, reject){
         dao.selectAsync(2)
         .then(function(){
