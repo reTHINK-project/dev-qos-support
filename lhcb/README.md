@@ -52,3 +52,4 @@ option                      | description
 -port, -p                   | set LHCB Broker CoAP Port
 -dummy, -d                  | provide dummy data instead of real data
 -name, -n                   | set client (endpoint) name
+-websocket, -ws             | setup WebSocketServer of ConnectivityMonitor

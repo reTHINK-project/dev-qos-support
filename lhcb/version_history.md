@@ -11,3 +11,8 @@
 * code optimization & documentation
 * added ability to set client name
 * added ability to provide dummy data
+
+## 0.2.1
+* added (optional) WebSocketServer to ConnectivityMonitor in order to request its current state via WebSocket
+* added -websocket launch option to client
+* fixed Runner Thread never stopping even though stopRunner() was called

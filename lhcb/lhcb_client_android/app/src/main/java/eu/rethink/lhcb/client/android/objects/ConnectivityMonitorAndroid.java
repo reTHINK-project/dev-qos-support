@@ -18,12 +18,20 @@
 package eu.rethink.lhcb.client.android.objects;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.telephony.CellInfo;
+import android.telephony.TelephonyManager;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Extension of ConnectivityMonitor with Android specific Runnables.
@@ -40,18 +48,20 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
     private Runnable wifiRunner = new Runnable() {
         @Override
         public void run() {
-            ArrayList<Integer> changedResources = new ArrayList<>(2);
+            Set<Integer> changedResources = new LinkedHashSet<>(2);
             WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
 
             int newSignalStrength = WifiManager.calculateSignalLevel(wifiManager.getConnectionInfo().getRssi(), 64);
             int newLinkQuality = wifiManager.getConnectionInfo().getLinkSpeed();
 
             if (signalStrength != newSignalStrength) {
+                LOG.trace("signalStrength has changed: {} -> {}", signalStrength, newSignalStrength);
                 signalStrength = newSignalStrength;
                 changedResources.add(2);
             }
 
             if (linkQuality != newLinkQuality) {
+                LOG.trace("linkQuality has changed: {} -> {}", linkQuality, newLinkQuality);
                 linkQuality = newLinkQuality;
                 changedResources.add(3);
             }
@@ -61,8 +71,39 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         }
     };
 
+    private Runnable connectivityRunner = new Runnable() {
+        @Override
+        public void run() {
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                for (Network network : connectivityManager.getAllNetworks()) {
+                    LOG.trace("NetworkInfo for network {}: {}", network, connectivityManager.getNetworkInfo(network));
+                }
+            } else {
+                for (NetworkInfo networkInfo : connectivityManager.getAllNetworkInfo()) {
+                    LOG.trace("NetworkInfo: {}", networkInfo);
+                }
+            }
+        }
+    };
+
+    private Runnable cellRunner = new Runnable() {
+        @Override
+        public void run() {
+            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
+
+                for (CellInfo cellInfo : cellInfos) {
+                    LOG.trace("cellInfo: {}", cellInfo);
+                }
+            }
+        }
+    };
+
     public ConnectivityMonitorAndroid(Context context) {
         this.context = context;
+        //addToRunner(ipRunner, gatewayRunner, wifiRunner, connectivityRunner, cellRunner);
         addToRunner(ipRunner, gatewayRunner, wifiRunner);
     }
 }

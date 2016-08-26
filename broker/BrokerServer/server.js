@@ -45,7 +45,7 @@ var url = require('url'),
         ca: fs.readFileSync('sslkeys/ca-crt.pem'),
         },
         app);
-// No const available in strict mode ? oO
+// No const available in strict mode ?
 
 var basicAuth = require('basic-auth');
 

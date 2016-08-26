@@ -18,6 +18,7 @@
 
 package eu.rethink.lhcb.client.util;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,10 +38,29 @@ public class Bearers {
             return null;
     }
 
+    public int getCurrentBearerInt() {
+        Tuple<String, Integer> currentBearer = getCurrentBearer();
+        return currentBearer != null ? currentBearer.y : -1;
+    }
+
+    public Map<Integer, Long> getBearersMap() {
+        Map<Integer, Long> map = new HashMap<>();
+        int j = 0;
+        for (Tuple<String, Integer> bearer : bearers) {
+            map.put(j++, (long) bearer.y);
+        }
+        return map;
+    }
+
     public String getCurrentIp() {
         if (ips.size() > 0 && bearers.size() > 0)
             return ips.get(0);
         else
             return null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o == this || (o instanceof Bearers && (bearers.equals(((Bearers) o).bearers) && ips.equals(((Bearers) o).ips)));
     }
 }

@@ -63,8 +63,8 @@ public class Utils {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
-                if (iface.isUp()) {
-                    //LOG.trace("getIPs: checking iface {} ", gson.toJson(iface));
+                if (!iface.isLoopback()) {
+                    LOG.trace("getIPs: checking iface {} ", gson.toJson(iface));
 
                     // only consider interface that are up
                     // try to get bearer kind
@@ -98,21 +98,22 @@ public class Utils {
      */
     public static Map<Integer, String> getGatewayIPs() {
         Map<Integer, String> ips = new LinkedHashMap<>();
+        String line = null;
         try {
             Process p = Runtime.getRuntime().exec(routeCmd);
             Scanner sc = new Scanner(p.getInputStream(), "IBM850");
 
             // "Kernel IP routing table"
-            sc.nextLine();
+            line = sc.nextLine();
 
             // Destination  Gateway     Genmask     Flags       MSS         Window      irtt        Iface
-            sc.nextLine();
+            line = sc.nextLine();
 
             // 0.0.0.0      10.147.65.1 0.0.0.0     UG          0           0           0           eth0
             // ...
             int i = 0;
             while (sc.hasNextLine()) {
-                String line = sc.nextLine();
+                line = sc.nextLine();
                 do {
                     line = line.replace("  ", " ");
                 } while (line.contains("  "));
@@ -121,9 +122,10 @@ public class Utils {
                     ips.put(i++, splitLine[1]);
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             //e.printStackTrace();
             LOG.warn("Unable to get Gateway IPs", e);
+            LOG.trace("Last scanned line before exception: {}", line);
         }
         return ips;
     }

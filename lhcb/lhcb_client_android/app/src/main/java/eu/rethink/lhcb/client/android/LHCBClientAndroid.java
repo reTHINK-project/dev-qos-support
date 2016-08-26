@@ -45,9 +45,11 @@ public class LHCBClientAndroid extends AppCompatActivity {
         setContentView(R.layout.activity_lhcb_client_android);
         lhcbClient = new LHCBClient();
 
+        // setup ConnectivityMonitorAndroid
         final ConnectivityMonitor cmInstance = new ConnectivityMonitorAndroid(getApplicationContext());
         //cmInstance.startRunner();
         lhcbClient.setConnectivityMonitorInstance(cmInstance);
+        lhcbClient.setupWebSocket(true);
 
         // --- get layout elements ---
         // Broker IP
@@ -67,21 +69,21 @@ public class LHCBClientAndroid extends AppCompatActivity {
             @Override
             public void run() {
                 Random r = new Random();
-                while (!Thread.interrupted()) {
-                    //final String text = String.valueOf(r.nextInt());
-                    final String text = cmInstance.toJson();
-                    //LOG.debug("setting text: {}", text);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            conMonState.setText(text);
-                        }
-                    });
-                    try {
+                try {
+                    while (!Thread.interrupted()) {
+                        //final String text = String.valueOf(r.nextInt());
+                        final String text = cmInstance.toJson();
+                        //LOG.debug("setting text: {}", text);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                conMonState.setText(text);
+                            }
+                        });
                         Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
                     }
+                } catch (InterruptedException e) {
+                    //e.printStackTrace();
                 }
             }
         });
@@ -104,12 +106,20 @@ public class LHCBClientAndroid extends AppCompatActivity {
                 }
             }
         });
+
+        //int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION);
+        //
+        //if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+        //    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1337);
+        //}
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (lhcbClient != null)
+        if (lhcbClient != null) {
             lhcbClient.stop();
+            lhcbClient.getConnectivityMonitorInstance().stopRunner();
+        }
     }
 }

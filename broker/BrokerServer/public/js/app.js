@@ -98,8 +98,8 @@
                     'videopercent' : calculatePercentConsumed(res.video,datacontainer.provs[cspIndex].videoQuota),
                     'datapercent' : calculatePercentConsumed(res.data,datacontainer.provs[cspIndex].dataQuota)
                 });
-                console.log(datacontainer.provs[cspIndex].audiohasrisen);
-                console.log(datacontainer.oldcons[cspkey].audio);
+                //console.log(datacontainer.provs[cspIndex].audiohasrisen);
+                //console.log(datacontainer.oldcons[cspkey].audio);
                 datacontainer.oldcons[cspkey].audio = res.audio;
                 datacontainer.oldcons[cspkey].video = res.video;
                 datacontainer.oldcons[cspkey].data = res.data;
@@ -157,7 +157,7 @@
         };
 
         dashboard.showEdit = function(csp){
-            console.log(csp);
+            //console.log(csp);
             dashboard.cspToEdit = csp;
             dashboard.edit = true;
         };
@@ -168,7 +168,14 @@
         };
 
         dashboard.submitChanges = function(cspEdited){
-            console.log(cspEdited);
+            if (cspEdited.audioQuota === 'NaN') {
+                cspEdited.audioQuota = 0;
+            }
+            if (cspEdited.videoQuota === 'NaN') {
+                cspEdited.videoQuota = 0;
+            }
+            //console.log(cspEdited);
+
             $http.get('./changeQuotas',
             {'params':{'cspKey':cspEdited.csp,
             'audioQuota':cspEdited.audioQuota,

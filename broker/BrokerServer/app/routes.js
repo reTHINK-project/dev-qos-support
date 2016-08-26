@@ -77,8 +77,8 @@ module.exports = function(app, auth, dao) {
             res.json(reply);
             console.log('Returned Appropriate Turn and ClientId : ' + reply);
         })
-        .catch(function(error){ 
-            res.sendStatus(404);
+        .catch(function(error){
+            res.status(404).send(error);
         });
     });
 
@@ -118,7 +118,7 @@ module.exports = function(app, auth, dao) {
                 res.status(200).json(result);
             },
             function(err){
-                res.sendStatus(500);
+                res.status(500).send(err);
             }
         );
     });
@@ -208,7 +208,7 @@ module.exports = function(app, auth, dao) {
      * @apiSuccess {int} return 1
      */
      app.get('/changeQuotas',function(req,res){
-         console.log(req.query);
+         //console.log(req.query);
          var cspkey = req.query.cspKey;
          var audioQuota = req.query.audioQuota;
          var videoQuota = req.query.videoQuota;
