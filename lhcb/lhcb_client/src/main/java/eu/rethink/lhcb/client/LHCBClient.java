@@ -55,6 +55,7 @@ public class LHCBClient {
     private int serverPort = 5683;
     private ConnectivityMonitor connectivityMonitorInstance = null;
     private String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
+    private boolean setupWebsocket = false;
 
     public static void main(String[] args) {
         final LHCBClient client = new LHCBClient();
@@ -77,6 +78,14 @@ public class LHCBClient {
                 case "-name":
                     client.setName(args[++i]);
                     break;
+                case "-ws":
+                case "-websocket":
+                    client.setupWebSocket(true);
+                    break;
+                default:
+                    LOG.info("Unable to handle arg '{}' from {}", arg, args);
+                    i++;
+                    break;
             }
         }
 
@@ -88,6 +97,10 @@ public class LHCBClient {
                 client.stop();
             }
         }));
+    }
+
+    public void setupWebSocket(boolean setupWebsocket) {
+        this.setupWebsocket = setupWebsocket;
     }
 
     /**
@@ -157,7 +170,9 @@ public class LHCBClient {
             connectivityMonitorInstance = new ConnectivityMonitorSimple();
 
         connectivityMonitorInstance.startRunner();
-        connectivityMonitorInstance.setupWebSocketServer();
+
+        if (setupWebsocket)
+            connectivityMonitorInstance.setupWebSocketServer();
 
         initializer.setInstancesForObject(4, connectivityMonitorInstance);
         //initializer.setInstancesForObject(3000, new ExtendedDevice());

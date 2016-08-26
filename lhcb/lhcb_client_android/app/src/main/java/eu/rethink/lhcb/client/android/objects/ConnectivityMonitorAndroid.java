@@ -18,12 +18,19 @@
 package eu.rethink.lhcb.client.android.objects;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.telephony.CellInfo;
+import android.telephony.TelephonyManager;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -64,8 +71,39 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         }
     };
 
+    private Runnable connectivityRunner = new Runnable() {
+        @Override
+        public void run() {
+            ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                for (Network network : connectivityManager.getAllNetworks()) {
+                    LOG.trace("NetworkInfo for network {}: {}", network, connectivityManager.getNetworkInfo(network));
+                }
+            } else {
+                for (NetworkInfo networkInfo : connectivityManager.getAllNetworkInfo()) {
+                    LOG.trace("NetworkInfo: {}", networkInfo);
+                }
+            }
+        }
+    };
+
+    private Runnable cellRunner = new Runnable() {
+        @Override
+        public void run() {
+            TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
+
+                for (CellInfo cellInfo : cellInfos) {
+                    LOG.trace("cellInfo: {}", cellInfo);
+                }
+            }
+        }
+    };
+
     public ConnectivityMonitorAndroid(Context context) {
         this.context = context;
+        //addToRunner(ipRunner, gatewayRunner, wifiRunner, connectivityRunner, cellRunner);
         addToRunner(ipRunner, gatewayRunner, wifiRunner);
     }
 }
