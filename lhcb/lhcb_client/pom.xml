@@ -38,6 +38,8 @@
                 <configuration>
                     <archive>
                         <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
                             <mainClass>eu.rethink.lhcb.client.LHCBClient</mainClass>
                         </manifest>
                     </archive>

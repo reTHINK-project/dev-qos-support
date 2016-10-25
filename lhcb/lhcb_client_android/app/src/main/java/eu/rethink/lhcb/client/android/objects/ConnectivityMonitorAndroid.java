@@ -18,19 +18,20 @@
 package eu.rethink.lhcb.client.android.objects;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.telephony.CellInfo;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -91,19 +92,63 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         @Override
         public void run() {
             TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            apn.put(0, telephonyManager.getNetworkOperatorName());
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                List<CellInfo> cellInfos = telephonyManager.getAllCellInfo();
-
-                for (CellInfo cellInfo : cellInfos) {
-                    LOG.trace("cellInfo: {}", cellInfo);
+                LOG.info("hello my darling");
+                LOG.info("getCellLocation: {}", telephonyManager.getCellLocation());
+                //LOG.info("getDeviceId: {}", telephonyManager.getDeviceId());
+                LOG.info("getNetworkCountryIso: {}", telephonyManager.getNetworkCountryIso());
+                LOG.info("getDeviceSoftwareVersion: {}", telephonyManager.getDeviceSoftwareVersion());
+                LOG.info("getLine1Number: {}", telephonyManager.getLine1Number());
+                LOG.info("getNetworkCountryIso: {}", telephonyManager.getNetworkCountryIso());
+                LOG.info("getNetworkOperator: {}", telephonyManager.getNetworkOperator());
+                LOG.info("getNetworkOperatorName: {}", telephonyManager.getNetworkOperatorName());
+                String networkOperator = telephonyManager.getNetworkOperator();
+                if (!TextUtils.isEmpty(networkOperator)) {
+                    smcc = Integer.parseInt(networkOperator.substring(0, 3));
+                    smnc = Integer.parseInt(networkOperator.substring(3));
                 }
             }
         }
     };
 
+    private Runnable apnRunner = new Runnable() {
+        @Override
+        public void run() {
+            // from http://stackoverflow.com/questions/7257567/create-network-access-point-name-with-code
+
+            //path to preffered APNs
+            final Uri PREFERRED_APN_URI = Uri.parse("content://telephony/carriers/preferapn");
+
+            //receiving cursor to preffered APN table
+            Cursor c = context.getContentResolver().query(PREFERRED_APN_URI, null, null, null, null);
+
+            LOG.debug("columns: {}", c.getColumnNames());
+            //moving the cursor to beggining of the table
+            c.moveToFirst();
+
+            //now the cursor points to the first preffered APN and we can get some
+            //information about it
+            //for example first preffered APN id
+            int index = c.getColumnIndex("_id");    //getting index of required column
+            Short id = c.getShort(index);           //getting APN's id from
+
+            //we can get APN name by the same way
+            index = c.getColumnIndex("name");
+            String name = c.getString(index);
+
+            LOG.debug("APN Runner got id '{}' and name '{}'", id, name);
+
+            apn.put(0, name);
+            c.close();
+        }
+    };
+
     public ConnectivityMonitorAndroid(Context context) {
         this.context = context;
-        //addToRunner(ipRunner, gatewayRunner, wifiRunner, connectivityRunner, cellRunner);
-        addToRunner(ipRunner, gatewayRunner, wifiRunner);
+
+        addToRunner(ipRunner, gatewayRunner, wifiRunner, connectivityRunner, cellRunner);
+        //addToRunner(ipRunner, gatewayRunner, wifiRunner);
+        //addToRunner(connectivityRunner, cellRunner);
     }
 }

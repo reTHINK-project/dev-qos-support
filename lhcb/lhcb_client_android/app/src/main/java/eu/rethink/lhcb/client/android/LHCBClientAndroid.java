@@ -17,7 +17,11 @@
 
 package eu.rethink.lhcb.client.android;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -107,11 +111,15 @@ public class LHCBClientAndroid extends AppCompatActivity {
             }
         });
 
-        //int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION);
-        //
-        //if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-        //    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, 1337);
-        //}
+        int permissionCheck1 = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION);
+        int permissionCheck2 = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE);
+
+        LOG.info("permissionCheck1: {}", permissionCheck1);
+        LOG.info("permissionCheck2: {}", permissionCheck2);
+        LOG.info("needed Value: {}", PackageManager.PERMISSION_GRANTED);
+        if (permissionCheck1 != PackageManager.PERMISSION_GRANTED || permissionCheck2 != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.READ_PHONE_STATE}, 1337);
+        }
     }
 
     @Override
