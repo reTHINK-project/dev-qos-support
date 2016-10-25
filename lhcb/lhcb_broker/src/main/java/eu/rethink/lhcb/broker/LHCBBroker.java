@@ -43,6 +43,10 @@ public class LHCBBroker {
     private int httpPort = 8080;
     private int coapPort = 5683;
 
+    public LHCBBroker() {
+        LOG.info("LHCB Broker Version {}", getClass().getPackage().getImplementationVersion());
+    }
+
     public static void main(String[] args) {
         LHCBBroker broker = new LHCBBroker();
 

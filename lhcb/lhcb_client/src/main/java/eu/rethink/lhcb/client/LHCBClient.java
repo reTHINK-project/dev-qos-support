@@ -57,6 +57,10 @@ public class LHCBClient {
     private String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
     private boolean setupWebsocket = false;
 
+    public LHCBClient() {
+        LOG.info("LHCB Client Version {}", getClass().getPackage().getImplementationVersion());
+    }
+
     public static void main(String[] args) {
         final LHCBClient client = new LHCBClient();
         for (int i = 0; i < args.length; i++) {

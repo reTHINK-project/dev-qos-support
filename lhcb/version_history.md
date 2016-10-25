@@ -16,3 +16,6 @@
 * added (optional) WebSocketServer to ConnectivityMonitor in order to request its current state via WebSocket
 * added -websocket launch option to client
 * fixed Runner Thread never stopping even though stopRunner() was called
+
+## 0.2.2
+* prints current version on start
