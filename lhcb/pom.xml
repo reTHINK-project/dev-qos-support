@@ -15,7 +15,7 @@
         <slf4j.api.version>[1.7.0, 1.8)</slf4j.api.version>
         <log4j.version>2.5</log4j.version>
         <leshan.version>0.1.11-M12</leshan.version>
-        <lhcb.version>0.2.2</lhcb.version>
+        <lhcb.version>0.2.3</lhcb.version>
         <maven-assembly.version>2.6</maven-assembly.version>
         <maven-compiler.version>3.5.1</maven-compiler.version>
         <maven-surefirer.version>2.19.1</maven-surefirer.version>
