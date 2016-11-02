@@ -237,3 +237,6 @@ Providing endpoint name and resource ID, the HTTP interface returns the object o
   "type": "STRING"
 }
 ```
+
+## Using the WebSocket interface
+The WebSocket interface is currently being developed for the Broker. [Please take a look at draft for the message schema that will be used.](./WebSocketMessageSchema.json)
