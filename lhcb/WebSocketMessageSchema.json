@@ -13,16 +13,27 @@
     },
     {
       "$ref": "#/Error"
+    },
+    {
+      "$ref": "#/Observe"
+    },
+    {
+      "$ref": "#/Notify"
     }
   ],
   "properties": {
+    "id": {
+      "type": "integer"
+    },
     "type": {
       "type": "string",
       "enum": [
         "read",
         "write",
         "response",
-        "error"
+        "error",
+        "observe",
+        "notify"
       ]
     },
     "endpoint": {
@@ -37,6 +48,7 @@
     "value": {}
   },
   "required": [
+    "id",
     "type"
   ],
   "additionalProperties": false,
@@ -50,7 +62,9 @@
           "enum": [
             "write",
             "response",
-            "error"
+            "error",
+            "observe",
+            "notify"
           ]
         }
       }
@@ -126,6 +140,53 @@
           "type": {
             "enum": [
               "error"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      }
+    ]
+  },
+  "Observe": {
+    "description": "Observe Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "observe"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "enum": [
+              "end"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ]
+      }
+    ]
+  },
+  "Notify": {
+    "description": "Notify Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "notify"
             ]
           }
         },
