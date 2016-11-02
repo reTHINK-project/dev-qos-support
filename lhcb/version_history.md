@@ -19,3 +19,6 @@
 
 ## 0.2.2
 * prints current version on start
+
+## 0.2.3
+* changed the http interface responses slightly

@@ -22,8 +22,10 @@ import eu.rethink.lhcb.broker.provider.CustomModelProvider;
 import eu.rethink.lhcb.broker.servlet.EventServlet;
 import eu.rethink.lhcb.broker.servlet.WellKnownServlet;
 import org.eclipse.californium.core.network.config.NetworkConfig;
-import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.leshan.server.californium.LeshanServerBuilder;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
@@ -41,7 +43,9 @@ public class LHCBBroker {
     private Server server;
 
     private int httpPort = 8080;
+    private int httpsPort = 8443;
     private int coapPort = 5683;
+    private int coapsPort = 5684;
 
     public LHCBBroker() {
         LOG.info("LHCB Broker Version {}", getClass().getPackage().getImplementationVersion());
@@ -60,57 +64,72 @@ public class LHCBBroker {
                 case "-h":
                     String rawHttpPort = args[++i];
                     int httpPort = 0;
-                    // if http address was given (like for coap), extract only port part
                     try {
                         httpPort = Integer.parseInt(rawHttpPort);
-                    } catch (IndexOutOfBoundsException e) {
-                        //e.printStackTrace();
+                    } catch (Exception e) {
+                        LOG.error("Unable to parse HTTP port '" + rawHttpPort + "'", e);
                     }
                     broker.setHttpPort(httpPort);
                     break;
                 case "-sslport":
                 case "-ssl":
                 case "-s":
-                    // TODO implementation
+                case "-httpsport":
+                case "-https":
+                case "-hs":
+                    String rawHttpsPort = args[++i];
+                    int httpsPort = 0;
+                    try {
+                        httpsPort = Integer.parseInt(rawHttpsPort);
+                    } catch (Exception e) {
+                        LOG.error("Unable to parse HTTPS/SSL port '" + rawHttpsPort + "'", e);
+                    }
+                    broker.setHttpsPort(httpsPort);
                     break;
                 case "-coapport":
                 case "-coap":
                 case "-c":
                     String rawCoapPort = args[++i];
                     int coapPort = 0;
-                    // if http address was given (like for coap), extract only port part
                     try {
                         coapPort = Integer.parseInt(rawCoapPort);
-                    } catch (IndexOutOfBoundsException e) {
-                        //e.printStackTrace();
+                    } catch (Exception e) {
+                        LOG.error("Unable to parse CoAP port '" + rawCoapPort + "'", e);
                     }
                     broker.setCoapPort(coapPort);
                     break;
                 case "-coapsport":
                 case "-coaps":
                 case "-cs":
-                    // TODO implementation
+                    String rawCoapsPort = args[++i];
+                    int coapsPort = 0;
+                    try {
+                        coapsPort = Integer.parseInt(rawCoapsPort);
+                    } catch (Exception e) {
+                        LOG.error("Unable to parse CoAPs port '" + rawCoapsPort + "'", e);
+                    }
+                    broker.setCoapsPort(coapsPort);
                     break;
-                case "-keystorePath":
-                case "-kp":
-                    // TODO implementation
-                    break;
-                case "-truststorePath":
-                case "-tp":
-                    // TODO implementation
-                    break;
-                case "-keystorePassword":
-                case "-kpw":
-                    // TODO implementation
-                    break;
-                case "-keyManagerPassword":
-                case "-kmpw":
-                    // TODO implementation
-                    break;
-                case "-truststorePassword":
-                case "-tpw":
-                    // TODO implementation
-                    break;
+                //case "-keystorePath":
+                //case "-kp":
+                //    // TODO implementation
+                //    break;
+                //case "-truststorePath":
+                //case "-tp":
+                //    // TODO implementation
+                //    break;
+                //case "-keystorePassword":
+                //case "-kpw":
+                //    // TODO implementation
+                //    break;
+                //case "-keyManagerPassword":
+                //case "-kmpw":
+                //    // TODO implementation
+                //    break;
+                //case "-truststorePassword":
+                //case "-tpw":
+                //    // TODO implementation
+                //    break;
                 default:
                     // unknown arg
                     i++;
@@ -124,8 +143,16 @@ public class LHCBBroker {
         this.httpPort = httpPort;
     }
 
+    public void setHttpsPort(int httpsPort) {
+        this.httpsPort = httpsPort;
+    }
+
     public void setCoapPort(int coapPort) {
         this.coapPort = coapPort;
+    }
+
+    public void setCoapsPort(int coapsPort) {
+        this.coapsPort = coapsPort;
     }
 
     public void start() {
@@ -137,12 +164,52 @@ public class LHCBBroker {
         // create Leshan server
         LeshanServerBuilder lsb = new LeshanServerBuilder();
         lsb.setLocalAddress("0", coapPort);
+        lsb.setLocalSecureAddress("0", coapsPort);
         lsb.setObjectModelProvider(new CustomModelProvider());
         leshanServer = lsb.build();
         leshanServer.start();
 
-        // create HTTP server
-        server = new Server(httpPort);
+        // Now prepare and start jetty
+        server = new Server();
+
+        // HTTP Configuration
+        HttpConfiguration http_config = new HttpConfiguration();
+        http_config.addCustomizer(new SecureRequestCustomizer());
+
+        // === jetty-http.xml ===
+        ServerConnector http = new ServerConnector(server,
+                new HttpConnectionFactory(http_config));
+        http.setHost("0.0.0.0");
+        http.setPort(httpPort);
+        http.setIdleTimeout(30000);
+        server.addConnector(http);
+
+        // === jetty-https.xml ===
+        // SSL Context Factory
+        SslContextFactory sslContextFactory = new SslContextFactory();
+        sslContextFactory.setKeyStorePath("ssl/keystore");
+        sslContextFactory.setKeyStorePassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
+        sslContextFactory.setKeyManagerPassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
+        sslContextFactory.setTrustStorePath("ssl/keystore");
+        sslContextFactory.setTrustStorePassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
+        sslContextFactory.setExcludeCipherSuites("SSL_RSA_WITH_DES_CBC_SHA",
+                "SSL_DHE_RSA_WITH_DES_CBC_SHA", "SSL_DHE_DSS_WITH_DES_CBC_SHA",
+                "SSL_RSA_EXPORT_WITH_RC4_40_MD5",
+                "SSL_RSA_EXPORT_WITH_DES40_CBC_SHA",
+                "SSL_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA",
+                "SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA");
+
+        // SSL HTTP Configuration
+        HttpConfiguration https_config = new HttpConfiguration(http_config);
+        https_config.addCustomizer(new SecureRequestCustomizer());
+
+        // SSL Connector
+        ServerConnector sslConnector = new ServerConnector(server,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(https_config));
+        sslConnector.setHost("0.0.0.0");
+        sslConnector.setPort(httpsPort);
+        server.addConnector(sslConnector);
 
         WebAppContext root = new WebAppContext();
         root.setContextPath("/");

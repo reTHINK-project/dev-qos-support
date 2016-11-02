@@ -1,0 +1,139 @@
+{
+  "description": "Message Schema for the LHCB Broker WebSocket Interface",
+  "type": "object",
+  "anyOf": [
+    {
+      "$ref": "#/Read"
+    },
+    {
+      "$ref": "#/Write"
+    },
+    {
+      "$ref": "#/Response"
+    },
+    {
+      "$ref": "#/Error"
+    }
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write",
+        "response",
+        "error"
+      ]
+    },
+    "endpoint": {
+      "type": "string"
+    },
+    "resource": {
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "value": {}
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "dependencies": {
+    "resource": [
+      "endpoint"
+    ],
+    "value": {
+      "properties": {
+        "type": {
+          "enum": [
+            "write",
+            "response",
+            "error"
+          ]
+        }
+      }
+    }
+  },
+  "Read": {
+    "description": "Read Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "read"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "Write": {
+    "description": "Write Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "write"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      }
+    ]
+  },
+  "Response": {
+    "description": "Response Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "response"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      }
+    ]
+  },
+  "Error": {
+    "description": "Error Message Schema",
+    "allOf": [
+      {
+        "$ref": "#"
+      },
+      {
+        "properties": {
+          "type": {
+            "enum": [
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "value"
+        ]
+      }
+    ]
+  }
+}
