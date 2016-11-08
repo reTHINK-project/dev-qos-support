@@ -47,6 +47,12 @@ public class LHCBBroker {
     private int coapPort = 5683;
     private int coapsPort = 5684;
 
+    private String keyStorePath = "ssl/keystore";
+    private String trustStorePath = "ssl/keystore";
+    private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+    private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+    private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+
     public LHCBBroker() {
         LOG.info("LHCB Broker Version {}", getClass().getPackage().getImplementationVersion());
     }
@@ -110,26 +116,26 @@ public class LHCBBroker {
                     }
                     broker.setCoapsPort(coapsPort);
                     break;
-                //case "-keystorePath":
-                //case "-kp":
-                //    // TODO implementation
-                //    break;
-                //case "-truststorePath":
-                //case "-tp":
-                //    // TODO implementation
-                //    break;
-                //case "-keystorePassword":
-                //case "-kpw":
-                //    // TODO implementation
-                //    break;
-                //case "-keyManagerPassword":
-                //case "-kmpw":
-                //    // TODO implementation
-                //    break;
-                //case "-truststorePassword":
-                //case "-tpw":
-                //    // TODO implementation
-                //    break;
+                case "-keystorePath":
+                case "-kp":
+                    broker.setKeyStorePath(args[++i]);
+                    break;
+                case "-truststorePath":
+                case "-tp":
+                    broker.setTrustStorePath(args[++i]);
+                    break;
+                case "-keystorePassword":
+                case "-kpw":
+                    broker.setTrustStorePath(args[++i]);
+                    break;
+                case "-keyManagerPassword":
+                case "-kmpw":
+                    broker.setKeyManagerPassword(args[++i]);
+                    break;
+                case "-truststorePassword":
+                case "-tpw":
+                    broker.setTrustStorePassword(args[++i]);
+                    break;
                 default:
                     // unknown arg
                     i++;
@@ -137,6 +143,26 @@ public class LHCBBroker {
         }
 
         broker.start();
+    }
+
+    public void setKeyStorePath(String keyStorePath) {
+        this.keyStorePath = keyStorePath;
+    }
+
+    public void setTrustStorePath(String trustStorePath) {
+        this.trustStorePath = trustStorePath;
+    }
+
+    public void setKeyStorePassword(String keyStorePassword) {
+        this.keyStorePassword = keyStorePassword;
+    }
+
+    public void setKeyManagerPassword(String keyManagerPassword) {
+        this.keyManagerPassword = keyManagerPassword;
+    }
+
+    public void setTrustStorePassword(String trustStorePassword) {
+        this.trustStorePassword = trustStorePassword;
     }
 
     public void setHttpPort(int httpPort) {
@@ -187,11 +213,11 @@ public class LHCBBroker {
         // === jetty-https.xml ===
         // SSL Context Factory
         SslContextFactory sslContextFactory = new SslContextFactory();
-        sslContextFactory.setKeyStorePath("ssl/keystore");
-        sslContextFactory.setKeyStorePassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
-        sslContextFactory.setKeyManagerPassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
-        sslContextFactory.setTrustStorePath("ssl/keystore");
-        sslContextFactory.setTrustStorePassword("OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz");
+        sslContextFactory.setKeyStorePath(keyStorePath);
+        sslContextFactory.setKeyStorePassword(keyStorePassword);
+        sslContextFactory.setKeyManagerPassword(keyManagerPassword);
+        sslContextFactory.setTrustStorePath(trustStorePath);
+        sslContextFactory.setTrustStorePassword(trustStorePassword);
         sslContextFactory.setExcludeCipherSuites("SSL_RSA_WITH_DES_CBC_SHA",
                 "SSL_DHE_RSA_WITH_DES_CBC_SHA", "SSL_DHE_DSS_WITH_DES_CBC_SHA",
                 "SSL_RSA_EXPORT_WITH_RC4_40_MD5",

@@ -14,4 +14,4 @@ RUN cd /opt/reTHINK/dev-qos-support/lhcb/lhcb_broker/target && mv rethink-lhcb-b
 RUN cd /opt/reTHINK/dev-qos-support/lhcb
 
 # ENTRYPOINT is the command that is always run.
-ENTRYPOINT ["java", "-jar", "/opt/reTHINK/dev-qos-support/lhcb/lhcb_broker/target/rethink-lhcb-broker-jar-with-dependencies.jar"]
+ENTRYPOINT ["java", "-jar", "/opt/reTHINK/dev-qos-support/lhcb/lhcb_broker/target/rethink-lhcb-broker-jar-with-dependencies.jar", "-kp", "/opt/reTHINK/dev-qos-support/lhcb/ssl/keystore", "-tp", "/opt/reTHINK/dev-qos-support/lhcb/ssl/keystore"]
