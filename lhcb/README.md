@@ -97,6 +97,8 @@ Resource IDs as standardized by lwM2M:
 09 = SMNC (Single, Optional, Integer, 0-999)
 10 = SMCC (Single, Optional, Integer, 0-999)
 ```
+A description of the values per resource ID is provided [here](./LWM2M-Connectivity-Monitoring-Object.md)
+
 Not providing `<client_endpoint_name>` returns a json array with names of all connected LHCB Clients, for example:
 ```
 [
