@@ -57,9 +57,9 @@ The IP address of the next-hop IP router.
 
 Note: This IP Address doesn’t indicate the Server IP address.
 
-### 06 = Link Utilization (Single, Optional, Integer, 1-100\%)
+### 06 = Link Utilization (Single, Optional, Integer, 1-100%)
 
-The average utilization of the link to the next-hop IP router in \%.
+The average utilization of the link to the next-hop IP router in %.
 
 ### 07 = APN (Multiple, Optional, String)
 
