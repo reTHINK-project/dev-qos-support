@@ -16,7 +16,7 @@
  *
  */
 
-package eu.rethink.lhcb.client.util;
+package eu.rethink.lhcb.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -162,6 +162,5 @@ public class Utils {
         }
         return new Tuple<>(linkQuality, signalStrength);
     }
-
 }
 

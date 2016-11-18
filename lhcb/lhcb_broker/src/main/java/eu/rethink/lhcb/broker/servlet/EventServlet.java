@@ -18,8 +18,6 @@
 
 package eu.rethink.lhcb.broker.servlet;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.eclipse.jetty.servlets.EventSource;
 import org.eclipse.jetty.servlets.EventSourceServlet;
 import org.eclipse.jetty.util.ConcurrentHashSet;
@@ -38,10 +36,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
+import static eu.rethink.lhcb.utils.Utils.gson;
 
 /**
  * Event Servlet that sends notifications to subscribed browsers about client changes
@@ -60,8 +58,6 @@ public class EventServlet extends EventSourceServlet {
     private static final String QUERY_PARAM_ENDPOINT = "ep";
 
     private final LeshanServer server;
-
-    private final Gson gson = new GsonBuilder().create();
 
     private Set<Event> events = new ConcurrentHashSet<>();
 
@@ -100,7 +96,7 @@ public class EventServlet extends EventSourceServlet {
     // client registry listener notifies browser with new client list if new LHCB client connected
     private final ClientRegistryListener clientRegistryListener = new ClientRegistryListener() {
         private void sendNotify() {
-            sendEvent(EVENT_CLIENT_LIST, gson.toJson(getEndpoints()), null, null);
+            sendEvent(EVENT_CLIENT_LIST, gson.toJson(server.getClientRegistry().allClients()), null, null);
         }
 
         @Override
@@ -121,6 +117,7 @@ public class EventServlet extends EventSourceServlet {
 
     /**
      * Create the EventServlet based on the given LeshanServer
+     *
      * @param server
      */
     public EventServlet(LeshanServer server) {
@@ -132,6 +129,7 @@ public class EventServlet extends EventSourceServlet {
 
     /**
      * Send an event to each subscribed browser
+     *
      * @param event
      * @param data
      * @param endpoint
@@ -143,7 +141,7 @@ public class EventServlet extends EventSourceServlet {
         // Event class is event a browser is subscribed to
         for (Event e : events) {
             // only send event if endpoint and (optionally) resourceId matches
-            if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint) && resourceId != null ? resourceId == e.getResourceId() : e.getResourceId() == -1)) {
+            if ((endpoint == null && e.getEndpoint() == null) || (e.getEndpoint() != null && e.getEndpoint().equals(endpoint))) {
                 LOG.debug("to event endpoint: {}", e.getEndpoint());
                 try {
                     e.sendEvent(event, data);
@@ -154,7 +152,6 @@ public class EventServlet extends EventSourceServlet {
             }
         }
     }
-
 
     @Override
     protected EventSource newEventSource(HttpServletRequest req) {
@@ -170,27 +167,7 @@ public class EventServlet extends EventSourceServlet {
 
         // browser wants to only be notified for certain endpoint and (optionally) resource
         String[] splitParam = endpointParam.split("/");
-        if (splitParam.length > 1)
-            return new Event(splitParam[0], Integer.parseInt(splitParam[1]));
-        else
-            return new Event(splitParam[0]);
-    }
-
-    /**
-     * Returns the current list of registered endpoints on the Leshan Server
-     * @return List of endpoint names
-     */
-    private String[] getEndpoints() {
-        Collection<Client> clients = server.getClientRegistry().allClients();
-        Iterator<Client> iterator = clients.iterator();
-        String[] endpoints = new String[clients.size()];
-        int i = 0;
-        while (iterator.hasNext()) {
-            Client next = iterator.next();
-            endpoints[i++] = next.getEndpoint();
-        }
-        //LOG.debug("generated endpoint list: {}", gson.toJson(endpoints));
-        return endpoints;
+        return new Event(splitParam[0]);
     }
 
     /**
@@ -198,16 +175,11 @@ public class EventServlet extends EventSourceServlet {
      */
     private class Event implements EventSource {
         private String endpoint;
-        private int resourceId = -1;
         private Emitter emitter;
 
         public Event(String endpoint) {
+            LOG.debug("New EventSource! for {}", endpoint);
             this.endpoint = endpoint;
-        }
-
-        public Event(String endpoint, int resourceId) {
-            this.endpoint = endpoint;
-            this.resourceId = resourceId;
         }
 
         @Override
@@ -226,11 +198,7 @@ public class EventServlet extends EventSourceServlet {
                     if (client != null) {
                         LOG.debug("got client for endpoint {}: {}", endpoint, client);
                         ObserveResponse response;
-                        if (resourceId > -1) {
-                            response = server.send(client, new ObserveRequest(4, 0, resourceId));
-                        } else {
-                            response = server.send(client, new ObserveRequest(4, 0));
-                        }
+                        response = server.send(client, new ObserveRequest(4, 0));
                         LOG.debug("got response: {}", response);
                     } else {
                         LOG.warn("tried to observe endpoint {} but it doesn't exist!", endpoint);
@@ -239,7 +207,7 @@ public class EventServlet extends EventSourceServlet {
                     e.printStackTrace();
                 }
             } else {
-                //sendEvent(EVENT_CLIENT_LIST, gson.toJson(getEndpoints()));
+                sendEvent(EVENT_CLIENT_LIST, gson.toJson(server.getClientRegistry().allClients()));
             }
         }
 
@@ -248,15 +216,15 @@ public class EventServlet extends EventSourceServlet {
             // remove event from the list and cancel the observation
             events.remove(this);
             LOG.debug("onClose. endpoint: " + endpoint);
-            String resourceId = this.resourceId > -1 ? "/" + this.resourceId : "";
             // TODO this might need a check if we have multiple events that are observing the same resource
-            server.getObservationRegistry().cancelObservations(server.getClientRegistry().get(endpoint), "/4/0" + resourceId);
+            server.getObservationRegistry().cancelObservations(server.getClientRegistry().get(endpoint), "/4/0");
         }
 
         /**
          * Forward event to the browser using the emitter
+         *
          * @param event - Event type
-         * @param data - JSON data (stringified)
+         * @param data  - JSON data (stringified)
          */
         public void sendEvent(String event, String data) {
             try {
@@ -269,18 +237,11 @@ public class EventServlet extends EventSourceServlet {
 
         /**
          * Get the endpoint name for this event
+         *
          * @return name of the endpoint this event is limited to.
          */
         public String getEndpoint() {
             return endpoint;
-        }
-
-        /**
-         * Get the resourceId for this event
-         * @return ID of the resource this event is limited to.
-         */
-        public int getResourceId() {
-            return resourceId;
         }
     }
 }

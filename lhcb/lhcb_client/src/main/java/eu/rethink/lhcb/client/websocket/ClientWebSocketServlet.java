@@ -16,34 +16,17 @@
  *
  */
 
-package eu.rethink.lhcb.client.util;
+package eu.rethink.lhcb.client.websocket;
 
-public class Tuple<X, Y> {
-    public final X x;
-    public final Y y;
+import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
-    public Tuple(X x, Y y) {
-        this.x = x;
-        this.y = y;
-    }
-
+/**
+ * Created by Robert Ende on 15.11.16.
+ */
+public class ClientWebSocketServlet extends WebSocketServlet {
     @Override
-    public String toString() {
-        return "(" + x + "," + y + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == this)
-            return true;
-        else if (o instanceof Tuple) {
-            try {
-                return x.equals(((Tuple) o).x) && y.equals(((Tuple) o).y);
-            } catch (Exception e) {
-                return false;
-            }
-        } else {
-            return false;
-        }
+    public void configure(WebSocketServletFactory webSocketServletFactory) {
+        webSocketServletFactory.register(ClientWebSocketListener.class);
     }
 }

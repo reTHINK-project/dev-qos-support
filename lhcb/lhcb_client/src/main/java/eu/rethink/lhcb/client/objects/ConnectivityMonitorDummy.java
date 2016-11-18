@@ -18,8 +18,8 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import eu.rethink.lhcb.client.util.Bearers;
-import eu.rethink.lhcb.client.util.Tuple;
+import eu.rethink.lhcb.utils.Bearers;
+import eu.rethink.lhcb.utils.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

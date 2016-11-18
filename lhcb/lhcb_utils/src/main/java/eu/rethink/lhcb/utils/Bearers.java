@@ -16,7 +16,7 @@
  *
  */
 
-package eu.rethink.lhcb.client.util;
+package eu.rethink.lhcb.utils;
 
 import java.util.HashMap;
 import java.util.List;

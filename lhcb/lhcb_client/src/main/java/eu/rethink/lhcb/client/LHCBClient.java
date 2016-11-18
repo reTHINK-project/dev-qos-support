@@ -22,10 +22,16 @@ import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitorDummy;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitorSimple;
 import eu.rethink.lhcb.client.objects.Device;
+import eu.rethink.lhcb.client.websocket.ClientWebSocketServlet;
 import org.eclipse.californium.core.network.config.NetworkConfig;
+import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.server.*;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.resource.Resource;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.californium.LeshanClientBuilder;
-import org.eclipse.leshan.client.object.Server;
 import org.eclipse.leshan.client.resource.LwM2mObjectEnabler;
 import org.eclipse.leshan.client.resource.ObjectsInitializer;
 import org.eclipse.leshan.core.model.LwM2mModel;
@@ -53,9 +59,12 @@ public class LHCBClient {
     // adjustable parameters
     private String serverHost = "localhost";
     private int serverPort = 5683;
-    private ConnectivityMonitor connectivityMonitorInstance = null;
+    public static ConnectivityMonitor connectivityMonitorInstance = null;
     private String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
-    private boolean setupWebsocket = false;
+    private Server server;
+    private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+    private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+    private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
 
     public LHCBClient() {
         LOG.info("LHCB Client Version {}", getClass().getPackage().getImplementationVersion());
@@ -82,10 +91,6 @@ public class LHCBClient {
                 case "-name":
                     client.setName(args[++i]);
                     break;
-                case "-ws":
-                case "-websocket":
-                    client.setupWebSocket(true);
-                    break;
                 default:
                     LOG.info("Unable to handle arg '{}' from {}", arg, args);
                     i++;
@@ -101,10 +106,6 @@ public class LHCBClient {
                 client.stop();
             }
         }));
-    }
-
-    public void setupWebSocket(boolean setupWebsocket) {
-        this.setupWebsocket = setupWebsocket;
     }
 
     /**
@@ -175,16 +176,70 @@ public class LHCBClient {
 
         connectivityMonitorInstance.startRunner();
 
-        if (setupWebsocket)
-            connectivityMonitorInstance.setupWebSocketServer();
+        // Now prepare and start jetty
+        server = new Server();
 
+        // HTTP Configuration
+        HttpConfiguration http_config = new HttpConfiguration();
+        http_config.addCustomizer(new SecureRequestCustomizer());
+
+        // === jetty-http.xml ===
+        ServerConnector http = new ServerConnector(server,
+                new HttpConnectionFactory(http_config));
+        http.setHost("0.0.0.0");
+        http.setPort(9080);
+        http.setIdleTimeout(30000);
+        server.addConnector(http);
+
+        // === jetty-https.xml ===
+        // SSL Context Factory
+        SslContextFactory sslContextFactory = new SslContextFactory();
+        Resource keystore = Resource.newClassPathResource("/keystore");
+        sslContextFactory.setKeyStoreResource(keystore);
+        sslContextFactory.setKeyStorePassword(keyStorePassword);
+        sslContextFactory.setTrustStoreResource(keystore);
+        sslContextFactory.setTrustStorePassword(trustStorePassword);
+        sslContextFactory.setKeyManagerPassword(keyManagerPassword);
+        sslContextFactory.setExcludeCipherSuites("SSL_RSA_WITH_DES_CBC_SHA",
+                "SSL_DHE_RSA_WITH_DES_CBC_SHA", "SSL_DHE_DSS_WITH_DES_CBC_SHA",
+                "SSL_RSA_EXPORT_WITH_RC4_40_MD5",
+                "SSL_RSA_EXPORT_WITH_DES40_CBC_SHA",
+                "SSL_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA",
+                "SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA");
+
+        // SSL HTTP Configuration
+        HttpConfiguration https_config = new HttpConfiguration(http_config);
+        https_config.addCustomizer(new SecureRequestCustomizer());
+
+        // SSL Connector
+        ServerConnector sslConnector = new ServerConnector(server,
+                new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+                new HttpConnectionFactory(https_config));
+        sslConnector.setHost("0.0.0.0");
+        sslConnector.setPort(9443);
+        server.addConnector(sslConnector);
+
+        ServletContextHandler sch = new ServletContextHandler();
+        sch.setContextPath("/");
+        sch.setResourceBase(".");
+        //root.setParentLoaderPriority(true);
+
+        sch.addServlet(new ServletHolder(new ClientWebSocketServlet()), "/ws/*");
+        server.setHandler(sch);
+        try {
+            LOG.info("WebSocketServer should be available at: " + server.getURI());
+            LOG.info("Starting server...");
+            server.start();
+        } catch (Exception e) {
+            LOG.error("HTTP server error", e);
+        }
         initializer.setInstancesForObject(4, connectivityMonitorInstance);
         //initializer.setInstancesForObject(3000, new ExtendedDevice());
 
         String serverURI = String.format("coap://%s:%s", serverHost, serverPort);
 
         initializer.setInstancesForObject(SECURITY, noSec(serverURI, 123));
-        initializer.setInstancesForObject(SERVER, new Server(123, 30, BindingMode.U, false));
+        initializer.setInstancesForObject(SERVER, new org.eclipse.leshan.client.object.Server(123, 30, BindingMode.U, false));
 
         List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
 
@@ -207,4 +262,11 @@ public class LHCBClient {
         }
     }
 
+    public void setKeyManagerPassword(String keyManagerPassword) {
+        this.keyManagerPassword = keyManagerPassword;
+    }
+
+    public void setTrustStorePassword(String trustStorePassword) {
+        this.trustStorePassword = trustStorePassword;
+    }
 }

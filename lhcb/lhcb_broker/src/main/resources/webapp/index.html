@@ -22,452 +22,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="angular.js"></script>
 </head>
-
+<style>
+    td {
+        text-align: left;
+        vertical-align: top;
+    }
+</style>
 <body ng-app="lhcbgui" ng-controller="lhcbCtrl">
 <h1>Last Hop Connectivity Broker - GUI</h1>
 
 <p>Please select one of the available clients:
-    <select name="singleSelect" ng-change="onClientSelect(client)" ng-model="client"
-            ng-options="client for client in clients"></select>
+    <select name="singleSelect" ng-change="getClientInfo(client.endpoint)" ng-model="client"
+            ng-options="client.endpoint for client in clients"></select>
 </p>
 
 <div>
     <div ng-show="client"
          style="font-family: monospace; background-color: lightgrey; display: inline-block; border: 2px solid; padding: 30px">
-        <h2>Connectivity Monitoring
-            <button ng-click="getClientConnectivity(client)">GET</button>
-            <button ng-init="observers[99] = false"
-                    ng-click="observers[99] ? cancelObserveClient() : observeClient(client); observers[99] = !observers[99]">
-                {{observers[99] ? "&#9899" : "&#9898"}}
-            </button>
+        <h2>Connectivity Monitoring: {{client.endpoint}}
+            <button ng-click="getClientInfo(client.endpoint)">GET</button>
         </h2>
-        <table border="1" style="border: 1px" ng-model="observers">
-            <tr>
-                <td align="right">Network Bearer</td>
+        <table border="1" ng-show="clientInfo">
+            <tr ng-show="clientInfo[0]">
+                <td>Network Bearer</td>
                 <td>
-                    {{bearer}}
-                </td>
-                <td>
-                    <button ng-init="observers[0] = false"
-                            ng-click="observers[0] ? cancelObserveResource(0) : observeResource(client, 0); observers[0] = !observers[0]">
-                        {{observers[0] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[0].value}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">Available Network Bearer</td>
+            <tr ng-show="clientInfo[1]">
+                <td>Available Network Bearer</td>
                 <td>
-                    {{bearers}}
-                </td>
-                <td>
-                    <button ng-init="observers[1] = false"
-                            ng-click="observers[1] ? cancelObserveResource(1) : observeResource(client, 1); observers[1] = !observers[1]">
-                        {{observers[1] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[1].values | json}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">Radio Signal Strength</td>
+            <tr ng-show="clientInfo[2]">
+                <td>Radio Signal Strength</td>
                 <td>
-                    {{rss}}
-                </td>
-                <td>
-                    <button ng-init="observers[2] = false"
-                            ng-click="observers[2] ? cancelObserveResource(2) : observeResource(client, 2); observers[2] = !observers[2]">
-                        {{observers[2] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[2].value}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">Link Quality</td>
+            <tr ng-show="clientInfo[3]">
+                <td>Link Quality</td>
                 <td>
-                    {{lq}}
-                </td>
-                <td>
-                    <button ng-init="observers[3] = false"
-                            ng-click="observers[3] ? cancelObserveResource(3) : observeResource(client, 3); observers[3] = !observers[3]">
-                        {{observers[3] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[3].value}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">IP Addresses</td>
+            <tr ng-show="clientInfo[4]">
+                <td>IP Addresses</td>
                 <td>
-                    <a ng-repeat="ip in ips">{{ip}}<br ng-if="$index < (ips.length + 1)"></a>
-                </td>
-                <td>
-                    <button ng-init="observers[4] = false"
-                            ng-click="observers[4] ? cancelObserveResource(4) : observeResource(client, 4); observers[4] = !observers[4]">
-                        {{observers[4] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[4].values | json}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">Router IP Addresse</td>
+            <tr ng-show="clientInfo[5]">
+                <td>Router IP Address</td>
                 <td>
-                    <a ng-repeat="ip in rips">{{ip}}<br ng-if="$index < (rips.length + 1)"></a>
-                </td>
-                <td>
-                    <button ng-init="observers[5] = false"
-                            ng-click="observers[5] ? cancelObserveResource(5) : observeResource(client, 5); observers[5] = !observers[5]">
-                        {{observers[5] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[5].values | json}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">Link Utilization</td>
+            <tr ng-show="clientInfo[6]">
+                <td>Link Utilization</td>
                 <td>
-                    {{lu}}
-                </td>
-                <td>
-                    <button ng-init="observers[6] = false"
-                            ng-click="observers[6] ? cancelObserveResource(6) : observeResource(client, 6); observers[6] = !observers[6]">
-                        {{observers[6] ? "&#9899" : "&#9898"}}
-                    </button>
+                    <pre>{{clientInfo[6].value}}</pre>
                 </td>
             </tr>
-            <tr>
-                <td align="right">APN</td>
-                <td>
-                    <a ng-repeat="apn in apns">{{apn}}<br ng-if="$index < (apns.length + 1)"></a>
-                </td>
-                <td>
-                    <button ng-init="observers[7] = false"
-                            ng-click="observers[7] ? cancelObserveResource(7) : observeResource(client, 7); observers[7] = !observers[7]">
-                        {{observers[7] ? "&#9899" : "&#9898"}}
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td align="right">Cell ID</td>
-                <td>
-                    {{cid}}
-                </td>
-                <td>
-                    <button ng-init="observers[8] = false"
-                            ng-click="observers[8] ? cancelObserveResource(8) : observeResource(client, 8); observers[8] = !observers[8]">
-                        {{observers[8] ? "&#9899" : "&#9898"}}
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td align="right">Serving Mobile Network Code</td>
-                <td>
-                    {{smnc}}
-                </td>
-                <td>
-                    <button ng-init="observers[9] = false"
-                            ng-click="observers[9] ? cancelObserveResource(9) : observeResource(client, 9); observers[9] = !observers[9]">
-                        {{observers[9] ? "&#9899" : "&#9898"}}
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td align="right">Serving Mobile Country Code</td>
-                <td>
-                    {{smcc}}
-                </td>
-                <td>
-                    <button ng-init="observers[10] = false"
-                            ng-click="observers[10] ? cancelObserveResource(10) : observeResource(client, 10); observers[10] = !observers[10]">
-                        {{observers[10] ? "&#9899" : "&#9898"}}
-                    </button>
-                </td>
-            </tr>
-
         </table>
-
-        <h3>device URL: <a target="_blank" href="{{getClientURL(client)}}">{{getClientURL(client)}}</a></h3>
+        <p>
+            <button ng-click="showRawInfo = !showRawInfo" ng-init="showRawInfo = false">Show/Hide raw client info
+            </button>
+        <pre ng-show="showRawInfo">{{clientInfo | json}}</pre>
+        </p>
     </div>
-</div>
-<p>---------------------------</p>
-<button ng-click="debug = !debug" ng-init="debug = false">Toggle Debug Info</button>
-<div ng-show="debug">
-    <table>
-        <tr>
-            <td>Last GET response</td>
-            <td>
-                <pre>{{response}}</pre>
-            </td>
-        </tr>
-        <tr>
-            <td>Bearers</td>
-            <td>
-                <pre>{{bearers}}</pre>
-            </td>
-        </tr>
-        <tr>
-            <td>IPs</td>
-            <td>
-                <pre>{{ips}}</pre>
-            </td>
-        </tr>
-    </table>
-
-
 </div>
 </body>
 <script>
     var app = angular.module("lhcbgui", []);
-    app.controller("lhcbCtrl", function ($scope, $location) {
-        var clientObserveSource;
-        var resourceObserves = {};
-
-        /**
-         * Get array of clients from .../.well-known/
-         */
-        $scope.getClientList = function () {
-            var callback = function (response) {
-                updateClientList(response);
-            };
-
-            makeGET("/.well-known", callback);
-        };
-
-        /**
-         * Starts observing list of currently connected clients.
-         */
-        $scope.observeClientList = function () {
-            var clientSource = new EventSource("event");
-            var clientNotCallback = function (msg) {
-                var clients = JSON.parse(msg.data);
-                updateClientList(clients);
-            };
-
-            clientSource.addEventListener("CLIENTS", clientNotCallback, false);
-        };
-
-        /**
-         * Removes all observes on resources
-         */
-        $scope.clearResourceObserves = function () {
-            console.log("clearResourceObserves");
-            for (var ro in resourceObserves) {
-                resourceObserves[ro].close();
-                delete resourceObserves[ro];
-            }
-
-            for (var entry in $scope.observers) {
-                $scope.observers[entry] = false;
-            }
-
-            resourceObserves = {};
-        };
-
-        /**
-         * Updates GUI when client is selected. Clears all current observes and gets current client connectivity state.
-         * @param {string} client - client endpoint
-         */
-        $scope.onClientSelect = function (client) {
-            $scope.cancelObserveClient();
-            $scope.clearResourceObserves();
-            if (client) {
-                $scope.getClientConnectivity(client);
-            }
-        };
-
-        /**
-         * Get current connectivity state of client.
-         * @param {string} client - client endpoint
-         */
-        $scope.getClientConnectivity = function (client) {
-            var callback = function (response) {
-                $scope.$apply(function () {
-                    var resources = JSON.parse(response)["resources"];
-                    analyzeResources(resources);
-                })
-            };
-
-            makeGET("/.well-known/" + client, callback);
-        };
-
-        /**
-         * Observe a client. Observes the Connectivity Monitoring instance of the client.
-         * @param {string} client - client endpoint
-         */
-        $scope.observeClient = function (client) {
-            console.log("observeClient:", client);
-            $scope.clearResourceObserves();
-            if (!!window.EventSource) {
-                clientObserveSource = new EventSource('event?ep=' + client);
-                var notificationCallback = function (msg) {
-                    var content = JSON.parse(msg.data);
-                    console.log("got notification for %s:", content["ep"], content);
-                    $scope.$apply(function () {
-                        var resources = content["val"]["resources"];
-                        analyzeResources(resources);
-                    });
-                };
-                clientObserveSource.addEventListener('NOTIFICATION', notificationCallback, false);
-            } else {
-                // Result to xhr polling :(
-            }
-        };
-
-        /**
-         * Tries to cancel an observe on the current client.
-         */
-        $scope.cancelObserveClient = function () {
-            try {
-                clientObserveSource.close();
-            } catch (e) {
-            }
-        };
-
-        /**
-         * Observe a resource of a client's connectivity monitoring instance.
-         * @param {string} client - client endpoint
-         * @param {number} resourceId - ID of the resource you want to observe
-         */
-        $scope.observeResource = function (client, resourceId) {
-            console.log("observeResource:", client, resourceId);
-            if (!!window.EventSource) {
-                var resourceObserveSource = new EventSource('event?ep=' + client + "/" + resourceId);
-                var notificationCallback = function (msg) {
-                    var content = JSON.parse(msg.data);
-                    console.log("got notification for %s:", content["ep"], content);
-                    $scope.$apply(function () {
-                        var resource = content["val"];
-                        analyzeResource(resource);
-                    });
-                };
-                resourceObserveSource.addEventListener('NOTIFICATION', notificationCallback, false);
-                resourceObserves[resourceId] = resourceObserveSource;
-            } else {
-                // Result to xhr polling :(
-            }
-        };
-
-        /**
-         * Cancel observe on a resource
-         * @param {number} resourceId - ID of the resource that is being observed.
-         */
-        $scope.cancelObserveResource = function (resourceId) {
-            console.log("cancelObserveResource:", resourceId);
-            resourceObserves[resourceId].close();
-            delete resourceObserves[resourceId];
-        };
-
-        /**
-         * Updates the selector of available clients.
-         * @param {...string} clients - list of available clients
-         */
-        var updateClientList = function (clients) {
-            if (!(clients instanceof Object)) {
-                clients = JSON.parse(clients);
-            }
-            console.log("updateClientList:", clients);
-            var client = $scope.client;
-//            console.log("is %s in %s? -> %s", client, clients, clients.indexOf(client) > -1);
-            if (client && clients.indexOf(client) === -1) {
-                console.warn("Client " + client + " disconnected from the server!");
-            }
-            $scope.$apply(function () {
-                $scope.clients = clients;
-            })
-        };
-
-        /**
-         * Analyze json of resources and update the GUI accordingly.
-         * @param {string | Object} resources - JSON of resources
-         */
-        var analyzeResources = function (resources) {
-            console.log("analyzeResources:", resources);
-            if (!(resources instanceof Object)) {
-                resources = JSON.parse(resources);
-            }
-
-            for (var resource in resources) {
-                if (resources.hasOwnProperty(resource) && resources[resource] instanceof Object)
-                    analyzeResource(resources[resource]);
-            }
-
-        };
-
-        /**
-         * Update analyze a resource and update the appropriate variable in scope.
-         * @param {Object} resource - resource that might have changed
-         */
-        var analyzeResource = function (resource) {
-            console.log("analyzeResource:", resource);
-            var values = {};
-            var valArray = [];
-            var v = "";
-            switch (resource["id"]) {
-                case 0:
-                    $scope.bearer = resource["value"];
-                    break;
-                case 1:
-                    values = resource["values"];
-                    valArray = [];
-                    for (v in values) {
-                        if (values.hasOwnProperty(v))
-                            valArray.push(values[v])
-                    }
-                    $scope.bearers = valArray;
-                    break;
-                case 2:
-                    $scope.rss = resource["value"];
-                    break;
-                case 3:
-                    $scope.lq = resource["value"];
-                    break;
-                case 4:
-                    values = resource["values"];
-                    valArray = [];
-                    for (v in values) {
-                        if (values.hasOwnProperty(v))
-                            valArray.push(values[v])
-                    }
-                    $scope.ips = valArray;
-                    break;
-                case 5:
-                    $scope.rips = resource["values"];
-                    break;
-                case 6:
-                    $scope.lu = resource["value"];
-                    break;
-                case 7:
-                    values = resource["values"];
-                    valArray = [];
-                    for (v in values) {
-                        if (values.hasOwnProperty(v))
-                            valArray.push(values[v])
-                    }
-                    $scope.apns = valArray;
-                    break;
-                case 8:
-                    $scope.cid = resource["value"];
-                    break;
-                case 9:
-                    $scope.smnc = resource["value"];
-                    break;
-                case 10:
-                    $scope.smcc = resource["value"];
-                    break;
-                default:
-                    console.warn("unknown resource!", resource);
-                    break;
-            }
-
-        };
-
-        /**
-         * Make a GET request on the given URL and call the callback when done.
-         * @param url - URL to GET
-         * @param cb - callback that is fired when a response is received
-         */
-        var makeGET = function (url, cb) {
-            console.log("makeGET:", url);
+    app.controller("lhcbCtrl", function ($scope) {
+        var makeRequest = function (type, value, client, cb) {
+            console.log("makeRequest:", arguments);
             var http = new XMLHttpRequest();
-            http.open("GET", url);
+            http.open("POST", "/.well-known");
             http.onreadystatechange = function (event) {
+
                 var target = event.currentTarget;
                 if (target.readyState === 4) {
-                    $scope.$apply(function () {
-                        $scope.response = target.response;
-                    });
                     if (target.status === 200) {
+                        console.log("makeRequest ->", target.responseText);
                         cb(target.responseText);
                     } else {
                         console.log("Something went wrong because of response code: 200 != ", xhr.status);
@@ -475,28 +114,57 @@
                     }
                 }
             };
-            http.send();
+            var msg = {};
+            msg.type = type;
+            msg.value = value;
+            msg.client = client;
+            http.send(JSON.stringify(msg));
         };
 
-        /**
-         * Returns a generated client URL based on the client endpoint.
-         * @param {string} client - client endpoint
-         * @returns {string} generated client URL
-         */
-        $scope.getClientURL = function (client) {
-            console.log("getClientURL:", client);
-            return $location.protocol() + "://" + $location.host() + ":" + $location.port() + "/.well-known/" + client;
+        var getClientList = function () {
+            console.log("getClientList");
+            var callback = function (result) {
+                var json = JSON.parse(result);
+                $scope.clients = json.value;
+                if ($scope.client == undefined && $scope.clients != undefined && $scope.clients.length > 0) {
+                    $scope.client = $scope.clients[0];
+                    getClientInfo($scope.client.endpoint);
+                }
+                $scope.$apply();
+            };
+            makeRequest("read", undefined, undefined, callback);
+        };
+//
+//        var observeClientInfo = function () {
+//            console.log("observeClientInfo");
+//            var callback = function (result) {
+//                var json = JSON.parse(result);
+//                $scope.clients = json.value;
+//                if ($scope.client == undefined && $scope.clients != undefined && $scope.clients.length > 0) {
+//                    $scope.client = $scope.clients[0];
+//                    getClientInfo($scope.client.endpoint);
+//                }
+//                $scope.$apply();
+//            };
+//            makeRequest("observe", undefined, undefined, callback);
+//        }
+
+        var getClientInfo = function (clientName) {
+            console.log("getClientInfo", arguments);
+            var callback = function (result) {
+                var json = JSON.parse(result);
+                $scope.clientInfo = json.value;
+                console.log("clientInfo:", json.value);
+                $scope.$apply();
+            };
+            makeRequest("read", undefined, clientName, callback);
         };
 
-        // ----------------------- //
-        // INITIALIZATION COMPLETE //
-        // ----------------------- //
+        $scope.getClientList = getClientList;
+        $scope.getClientInfo = getClientInfo;
 
-        // get client list
-        $scope.getClientList();
 
-        // set event to get client list updates
-        $scope.observeClientList();
-    })
+        getClientList();
+    });
 </script>
 </html>

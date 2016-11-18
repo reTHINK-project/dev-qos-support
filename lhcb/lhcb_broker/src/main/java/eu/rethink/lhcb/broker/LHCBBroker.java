@@ -19,12 +19,14 @@
 package eu.rethink.lhcb.broker;
 
 import eu.rethink.lhcb.broker.provider.CustomModelProvider;
+import eu.rethink.lhcb.broker.servlet.BrokerWebSocketServlet;
 import eu.rethink.lhcb.broker.servlet.EventServlet;
 import eu.rethink.lhcb.broker.servlet.WellKnownServlet;
 import org.eclipse.californium.core.network.config.NetworkConfig;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.leshan.server.californium.LeshanServerBuilder;
@@ -47,8 +49,6 @@ public class LHCBBroker {
     private int coapPort = 5683;
     private int coapsPort = 5684;
 
-    private String keyStorePath = "ssl/keystore";
-    private String trustStorePath = "ssl/keystore";
     private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
@@ -116,26 +116,6 @@ public class LHCBBroker {
                     }
                     broker.setCoapsPort(coapsPort);
                     break;
-                case "-keystorePath":
-                case "-kp":
-                    broker.setKeyStorePath(args[++i]);
-                    break;
-                case "-truststorePath":
-                case "-tp":
-                    broker.setTrustStorePath(args[++i]);
-                    break;
-                case "-keystorePassword":
-                case "-kpw":
-                    broker.setTrustStorePath(args[++i]);
-                    break;
-                case "-keyManagerPassword":
-                case "-kmpw":
-                    broker.setKeyManagerPassword(args[++i]);
-                    break;
-                case "-truststorePassword":
-                case "-tpw":
-                    broker.setTrustStorePassword(args[++i]);
-                    break;
                 default:
                     // unknown arg
                     i++;
@@ -143,26 +123,6 @@ public class LHCBBroker {
         }
 
         broker.start();
-    }
-
-    public void setKeyStorePath(String keyStorePath) {
-        this.keyStorePath = keyStorePath;
-    }
-
-    public void setTrustStorePath(String trustStorePath) {
-        this.trustStorePath = trustStorePath;
-    }
-
-    public void setKeyStorePassword(String keyStorePassword) {
-        this.keyStorePassword = keyStorePassword;
-    }
-
-    public void setKeyManagerPassword(String keyManagerPassword) {
-        this.keyManagerPassword = keyManagerPassword;
-    }
-
-    public void setTrustStorePassword(String trustStorePassword) {
-        this.trustStorePassword = trustStorePassword;
     }
 
     public void setHttpPort(int httpPort) {
@@ -213,11 +173,13 @@ public class LHCBBroker {
         // === jetty-https.xml ===
         // SSL Context Factory
         SslContextFactory sslContextFactory = new SslContextFactory();
-        sslContextFactory.setKeyStorePath(keyStorePath);
+
+        Resource keystore = Resource.newClassPathResource("/keystore");
+        sslContextFactory.setKeyStoreResource(keystore);
         sslContextFactory.setKeyStorePassword(keyStorePassword);
-        sslContextFactory.setKeyManagerPassword(keyManagerPassword);
-        sslContextFactory.setTrustStorePath(trustStorePath);
+        sslContextFactory.setTrustStoreResource(keystore);
         sslContextFactory.setTrustStorePassword(trustStorePassword);
+        sslContextFactory.setKeyManagerPassword(keyManagerPassword);
         sslContextFactory.setExcludeCipherSuites("SSL_RSA_WITH_DES_CBC_SHA",
                 "SSL_DHE_RSA_WITH_DES_CBC_SHA", "SSL_DHE_DSS_WITH_DES_CBC_SHA",
                 "SSL_RSA_EXPORT_WITH_RC4_40_MD5",
@@ -244,11 +206,12 @@ public class LHCBBroker {
         server.setHandler(root);
 
         //ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
-        ServletHolder servletHolder = new ServletHolder(new WellKnownServlet(leshanServer));
-        root.addServlet(servletHolder, "/.well-known/*");
+        RequestHandler requestHandler = new RequestHandler(leshanServer);
+        BrokerWebSocketServlet.requestHandler = requestHandler; // TODO: any way to make this more intuitive? Static reference needed by WebSocketListener
 
-        ServletHolder eventHolder = new ServletHolder(new EventServlet(leshanServer));
-        root.addServlet(eventHolder, "/event/*");
+        root.addServlet(new ServletHolder(new WellKnownServlet(requestHandler)), "/.well-known/*");
+        root.addServlet(new ServletHolder(new BrokerWebSocketServlet()), "/ws/*");
+        root.addServlet(new ServletHolder(new EventServlet(leshanServer)), "/event/*");
 
         try {
             LOG.info("Server should be available at: " + server.getURI());

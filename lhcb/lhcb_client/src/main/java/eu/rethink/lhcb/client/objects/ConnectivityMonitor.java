@@ -18,20 +18,15 @@
 
 package eu.rethink.lhcb.client.objects;
 
-import eu.rethink.lhcb.client.util.Bearers;
-import eu.rethink.lhcb.client.util.Tuple;
-import eu.rethink.lhcb.client.util.Utils;
+import eu.rethink.lhcb.utils.Bearers;
+import eu.rethink.lhcb.utils.Tuple;
+import eu.rethink.lhcb.utils.Utils;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
 import org.eclipse.leshan.core.response.ReadResponse;
-import org.java_websocket.WebSocket;
-import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -237,53 +232,6 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     // runner related
     private List<Runnable> runnables = new CopyOnWriteArrayList<>();
     private Thread runnerThread = null;
-    private WebSocketServer wss;
-
-    /**
-     * Setup a WebSocketServer to retrieve the current state of this instance through it.
-     */
-    public void setupWebSocketServer() {
-        if (wss != null) {
-            LOG.warn("WebSocketServer already exists! Resetting...");
-            try {
-                wss.stop();
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        wss = new WebSocketServer(new InetSocketAddress(7331)) {
-            private final Logger LOG = LoggerFactory.getLogger(WebSocketServer.class);
-
-            @Override
-            public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
-                LOG.debug("onOpen: {}", webSocket);
-                webSocket.send(toJson());
-            }
-
-            @Override
-            public void onClose(WebSocket webSocket, int i, String s, boolean b) {
-                LOG.debug("onClose: {}", webSocket);
-
-            }
-
-            @Override
-            public void onMessage(WebSocket webSocket, String s) {
-                LOG.debug("onMessage: {}", webSocket);
-                if (s.equals("another one"))
-                    webSocket.send(toJson());
-
-            }
-
-            @Override
-            public void onError(WebSocket webSocket, Exception e) {
-                LOG.debug("onError: {}", webSocket);
-
-            }
-        };
-        wss.start();
-        LOG.debug("WebSocketServer running. Address: {}", wss.getAddress());
-    }
 
     /**
      * Adds one or more Runnables to the list of Runnables that the Runner Thread is supposed to run.

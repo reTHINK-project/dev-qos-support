@@ -15,7 +15,7 @@
         <slf4j.api.version>[1.7.0, 1.8)</slf4j.api.version>
         <log4j.version>2.5</log4j.version>
         <leshan.version>0.1.11-M12</leshan.version>
-        <lhcb.version>0.2.3</lhcb.version>
+        <lhcb.version>0.3.0</lhcb.version>
         <maven-assembly.version>2.6</maven-assembly.version>
         <maven-compiler.version>3.5.1</maven-compiler.version>
         <maven-surefirer.version>2.19.1</maven-surefirer.version>
@@ -24,6 +24,7 @@
     <modules>
         <module>lhcb_broker</module>
         <module>lhcb_client</module>
+        <module>lhcb_utils</module>
     </modules>
 
     <scm>
@@ -40,8 +41,8 @@
                 <version>${maven-compiler.version}</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <!--<showDeprecations>true</showDeprecations>-->
