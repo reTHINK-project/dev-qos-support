@@ -18,7 +18,9 @@
 
 package eu.rethink.lhcb.client.websocket;
 
+import com.google.gson.JsonObject;
 import eu.rethink.lhcb.client.LHCBClient;
+import eu.rethink.lhcb.utils.Utils;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.websocket.api.Session;
@@ -34,7 +36,6 @@ public class ClientWebSocketListener implements WebSocketListener {
     @Override
     public void onWebSocketBinary(byte[] payload, int offset, int len) {
         /* ignore */
-
     }
 
     @Override
@@ -61,13 +62,34 @@ public class ClientWebSocketListener implements WebSocketListener {
 
         if ((outbound != null) && (outbound.isOpen())) {
             LOG.info("got a message: {}", message);
-            if (LHCBClient.connectivityMonitorInstance != null) {
-                outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.toJson(), null);
 
-            } else {
-                outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
+            JsonObject jmsg = Utils.gson.fromJson(message, JsonObject.class);
+            switch (jmsg.get("type").getAsString()) {
+                case "write":
+                case "control":
+                    String ssid = null, password = null;
+                    if (jmsg.has("ssid"))
+                        ssid = jmsg.get("ssid").getAsString();
+                    if (jmsg.has("password"))
+                        password = jmsg.get("password").getAsString();
+                    if (LHCBClient.connectivityMonitorInstance != null) {
+                        outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.changeIface(ssid, password), null);
+                    } else {
+                        outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
 
+                    }
+                    break;
+                case "read":
+                    if (LHCBClient.connectivityMonitorInstance != null) {
+                        outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.toJson(), null);
+
+                    } else {
+                        outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
+
+                    }
+                    break;
             }
+
             //outbound.getRemote().sendString(message, null);
         }
     }

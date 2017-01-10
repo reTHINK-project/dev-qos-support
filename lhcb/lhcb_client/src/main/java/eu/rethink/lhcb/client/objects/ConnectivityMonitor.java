@@ -27,6 +27,9 @@ import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -438,4 +441,23 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     public String toJson() {
         return Utils.gson.toJson(getVarMap());
     }
+
+    public String changeIface(String name, String password) {
+        Process p = null;
+        try {
+            p = Runtime.getRuntime().exec("nmcli d wifi connect " + name + " password " + password);
+            BufferedReader resultBuffer = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String result = "";
+            String line;
+            while ((line = resultBuffer.readLine()) != null) {
+                result += line;
+            }
+            return result;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return e.getLocalizedMessage();
+        }
+    }
+
 }
