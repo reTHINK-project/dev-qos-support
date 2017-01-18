@@ -42,6 +42,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLParameters;
+import java.security.KeyStore;
 import java.util.List;
 import java.util.Random;
 
@@ -62,6 +65,7 @@ public class LHCBClient {
     public static ConnectivityMonitor connectivityMonitorInstance = null;
     private String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
     private Server server;
+    private KeyStore keyStore = null;
     private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
@@ -153,6 +157,10 @@ public class LHCBClient {
         this.serverPort = serverPort;
     }
 
+    public void setKeyStore(KeyStore keyStore) {
+        this.keyStore = keyStore;
+    }
+
     /**
      * Start the LHCB Client.
      */
@@ -193,11 +201,34 @@ public class LHCBClient {
 
         // === jetty-https.xml ===
         // SSL Context Factory
-        SslContextFactory sslContextFactory = new SslContextFactory();
-        Resource keystore = Resource.newClassPathResource("/keystore");
-        sslContextFactory.setKeyStoreResource(keystore);
+        SslContextFactory sslContextFactory = new SslContextFactory(true) {
+            @Override
+            public void customize(SSLEngine sslEngine) {
+                SSLParameters sslParams = sslEngine.getSSLParameters();
+                //sslParams.setEndpointIdentificationAlgorithm(_endpointIdentificationAlgorithm);
+                sslEngine.setSSLParameters(sslParams);
+
+                if (getWantClientAuth())
+                    sslEngine.setWantClientAuth(getWantClientAuth());
+                if (getNeedClientAuth())
+                    sslEngine.setNeedClientAuth(getNeedClientAuth());
+
+                sslEngine.setEnabledCipherSuites(selectCipherSuites(
+                        sslEngine.getEnabledCipherSuites(),
+                        sslEngine.getSupportedCipherSuites()));
+
+                sslEngine.setEnabledProtocols(selectProtocols(sslEngine.getEnabledProtocols(), sslEngine.getSupportedProtocols()));
+            }
+        };
+        if (keyStore == null) {
+            Resource ks = Resource.newClassPathResource("/keystore.jks");
+            sslContextFactory.setKeyStoreResource(ks);
+            sslContextFactory.setTrustStoreResource(ks);
+        } else {
+            sslContextFactory.setKeyStore(keyStore);
+        }
+
         sslContextFactory.setKeyStorePassword(keyStorePassword);
-        sslContextFactory.setTrustStoreResource(keystore);
         sslContextFactory.setTrustStorePassword(trustStorePassword);
         sslContextFactory.setKeyManagerPassword(keyManagerPassword);
         sslContextFactory.setExcludeCipherSuites("SSL_RSA_WITH_DES_CBC_SHA",

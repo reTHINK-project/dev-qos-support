@@ -33,6 +33,12 @@ import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.util.Random;
 
 /**
@@ -53,7 +59,6 @@ public class LHCBClientAndroid extends AppCompatActivity {
         final ConnectivityMonitor cmInstance = new ConnectivityMonitorAndroid(getApplicationContext());
         //cmInstance.startRunner();
         lhcbClient.setConnectivityMonitorInstance(cmInstance);
-        lhcbClient.setupWebSocket(true);
 
         // --- get layout elements ---
         // Broker IP
@@ -103,7 +108,23 @@ public class LHCBClientAndroid extends AppCompatActivity {
                     lhcbClient.setServerHost(brokerIp.getText().toString());
                     lhcbClient.setServerPort(Integer.parseInt(brokerPort.getText().toString()));
                     lhcbClient.setName(clientName.getText().toString());
+                    InputStream inputStream = getResources().openRawResource(R.raw.keystore);
+                    try {
+                        LOG.debug("Trying to load BKS KeyStore");
+                        KeyStore bks = KeyStore.getInstance("BKS");
+                        bks.load(inputStream, "fraunhofer".toCharArray());
+                        lhcbClient.setKeyStore(bks);
+                    } catch (KeyStoreException e) {
+                        e.printStackTrace();
+                    } catch (CertificateException e) {
+                        e.printStackTrace();
+                    } catch (NoSuchAlgorithmException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     lhcbClient.start();
+                    //
                 } else {
                     //buttonView.setText("disconnected");
                     lhcbClient.stop();

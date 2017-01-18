@@ -23,6 +23,7 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.telephony.TelephonyManager;
@@ -33,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+
+import static android.content.Context.WIFI_SERVICE;
 
 /**
  * Extension of ConnectivityMonitor with Android specific Runnables.
@@ -50,7 +53,7 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         @Override
         public void run() {
             Set<Integer> changedResources = new LinkedHashSet<>(2);
-            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            WifiManager wifiManager = (WifiManager) context.getSystemService(WIFI_SERVICE);
 
             int newSignalStrength = WifiManager.calculateSignalLevel(wifiManager.getConnectionInfo().getRssi(), 64);
             int newLinkQuality = wifiManager.getConnectionInfo().getLinkSpeed();
@@ -150,5 +153,26 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         addToRunner(ipRunner, gatewayRunner, wifiRunner, connectivityRunner, cellRunner);
         //addToRunner(ipRunner, gatewayRunner, wifiRunner);
         //addToRunner(connectivityRunner, cellRunner);
+    }
+
+    @Override
+    public String changeIface(String name, String password) {
+        //return super.changeIface(name, password);
+        LOG.debug("Trying to connect to {} with password {}", name, password);
+
+        WifiConfiguration wifiConfig = new WifiConfiguration();
+        wifiConfig.SSID = String.format("\"%s\"", name);
+        wifiConfig.preSharedKey = String.format("\"%s\"", password);
+
+        WifiManager wifiManager = (WifiManager) this.context.getSystemService(WIFI_SERVICE);
+        //remember id
+        int netId = wifiManager.addNetwork(wifiConfig);
+        boolean bDisconnect = wifiManager.disconnect();
+        boolean bEnableNetwork = wifiManager.enableNetwork(netId, true);
+        boolean bReconnect = wifiManager.reconnect();
+
+        LOG.debug("connection attempt done: " + bDisconnect + bEnableNetwork + bReconnect);
+
+        return "Tried it";
     }
 }
