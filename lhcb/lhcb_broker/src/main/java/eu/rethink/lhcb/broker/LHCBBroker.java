@@ -174,7 +174,7 @@ public class LHCBBroker {
         // SSL Context Factory
         SslContextFactory sslContextFactory = new SslContextFactory();
 
-        Resource keystore = Resource.newClassPathResource("/keystore");
+        Resource keystore = Resource.newClassPathResource("/keystore.jks");
         sslContextFactory.setKeyStoreResource(keystore);
         sslContextFactory.setKeyStorePassword(keyStorePassword);
         sslContextFactory.setTrustStoreResource(keystore);
