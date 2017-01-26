@@ -19,6 +19,7 @@
 package eu.rethink.lhcb.client.objects;
 
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
+import org.eclipse.leshan.core.response.ExecuteResponse;
 import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,5 +42,10 @@ public class ExtendedDevice extends BaseInstanceEnabler {
                 return ReadResponse.success(resourceid, deviceID);
         }
         return super.read(resourceid);
+    }
+
+    @Override
+    public ExecuteResponse execute(int resourceid, String params) {
+        return super.execute(resourceid, params);
     }
 }

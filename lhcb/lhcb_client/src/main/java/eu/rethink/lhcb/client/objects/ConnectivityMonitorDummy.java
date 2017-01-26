@@ -78,10 +78,10 @@ public class ConnectivityMonitorDummy extends ConnectivityMonitor {
         linkUtilization = r.nextInt(100);
 
         // 07
-        apn.put(0, "internet");
-        apn.put(1, "mywap");
-        apn.put(2, "bigbank-intranet");
-        apn.put(3, "mycompany.mnc02.mcc283.gprs");
+        apn.put(0, "MyProvider");
+        apn.put(1, "WifiNet01");
+        apn.put(2, "WifiNet02");
+        apn.put(3, "WifiNet03");
 
         // 08
         cellId = 24908;

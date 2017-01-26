@@ -22,6 +22,7 @@ import eu.rethink.lhcb.broker.RequestHandler;
 import eu.rethink.lhcb.broker.message.Message;
 import eu.rethink.lhcb.broker.message.exception.InvalidMessageException;
 import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.UpgradeRequest;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,19 @@ public class BrokerWebSocketListener implements WebSocketListener {
     public void onWebSocketConnect(Session session) {
         this.outbound = session;
         LOG.info("WebSocket Connect: {}", session);
+        LOG.debug("getLocalAddress: {}", session.getLocalAddress());
+        LOG.debug("getRemoteAddress: {}", session.getRemoteAddress());
+        //LOG.debug("getRemote: {}", Utils.gson.toJson(session.getRemote()));
+        UpgradeRequest upgradeRequest = session.getUpgradeRequest();
+        LOG.debug("upgradeRequest.getExtensions(): {}", upgradeRequest.getExtensions());
+        LOG.debug("upgradeRequest.getHeaders(): {}", upgradeRequest.getHeaders());
+        LOG.debug("upgradeRequest.getHost(): {}", upgradeRequest.getHost());
+        LOG.debug("upgradeRequest.getMethod(): {}", upgradeRequest.getMethod());
+        LOG.debug("upgradeRequest.getOrigin(): {}", upgradeRequest.getOrigin());
+        LOG.debug("upgradeRequest.getParameterMap(): {}", upgradeRequest.getParameterMap());
+        LOG.debug("upgradeRequest.getRequestURI(): {}", upgradeRequest.getRequestURI());
+        //LOG.debug("getUpgradeResponse: {}", Utils.gson.toJson(session.getUpgradeResponse()));
+
         this.outbound.getRemote().sendString("You are now connected to " + this.getClass().getName(), null);
     }
 

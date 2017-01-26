@@ -34,7 +34,7 @@
             <EditText
                 android:id="@+id/broker_ip"
                 android:layout_column="1"
-                android:text="10.147.65.152" />
+                android:text="liberator" />
 
         </TableRow>
 
@@ -118,7 +118,7 @@
         android:layout_height="1dp"
         android:background="@android:color/white"
         android:layout_below="@+id/tableLayout"
-        android:layout_margin="16dp"/>
+        android:layout_margin="16dp" />
 
     <ScrollView
         android:id="@+id/SCROLLER_ID"

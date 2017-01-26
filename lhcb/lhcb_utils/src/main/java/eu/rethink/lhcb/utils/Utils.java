@@ -39,13 +39,20 @@ public class Utils {
 
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
     private static final String routeCmd = "route -n";
-    private static final Map<String, Integer> IFaceNameToId = new HashMap<>();
+    private static final Map<String, Integer> IFaceNameToId = new LinkedHashMap<>();
 
     static {
         IFaceNameToId.put("eth", 41);
         IFaceNameToId.put("ens", 41);
         IFaceNameToId.put("wlan", 21);
         IFaceNameToId.put("wls", 21);
+        IFaceNameToId.put("rmnet0", 0);
+        IFaceNameToId.put("rmnet1", 1);
+        IFaceNameToId.put("rmnet2", 2);
+        IFaceNameToId.put("rmnet3", 3);
+        IFaceNameToId.put("rmnet3", 4);
+        IFaceNameToId.put("rmnet3", 5);
+        IFaceNameToId.put("rmnet", 6);
     }
 
     /**
@@ -64,14 +71,16 @@ public class Utils {
             while (networkInterfaces.hasMoreElements()) {
                 NetworkInterface iface = networkInterfaces.nextElement();
                 if (!iface.isLoopback()) {
-                    LOG.trace("getIPs: checking iface {} ", gson.toJson(iface));
+                    LOG.trace("getIPs: checking iface {} ", iface.getDisplayName());
 
                     // only consider interface that are up
                     // try to get bearer kind
                     for (String ifaceName : IFaceNameToId.keySet()) {
+                        LOG.trace("check: {} == {}?", iface.getDisplayName(), ifaceName);
                         if (iface.getDisplayName().startsWith(ifaceName)) {
                             int bearer = IFaceNameToId.get(ifaceName);
                             bearers.add(new Tuple<>(iface.getDisplayName(), bearer));
+                            break;
                         }
                     }
 

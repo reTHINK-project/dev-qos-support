@@ -143,11 +143,11 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
     public Bearers currentBearers = new Bearers(new LinkedList<Tuple<String, Integer>>(), new LinkedHashMap<Integer, String>());
     public int signalStrength = 64;
     public int linkQuality = -1;
-    public Map<Integer, String> routerIps = new HashMap<>();
+    public Map<Integer, String> routerIps = new LinkedHashMap<>();
 
     // cellular stuff
     public int linkUtilization = -1;
-    public Map<Integer, String> apn = new HashMap<>();
+    public Map<Integer, String> apn = new LinkedHashMap<>();
     public int cellId = -1;
     public int smnc = -1;
     public int smcc = -1;
@@ -458,6 +458,14 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
             e.printStackTrace();
             return e.getLocalizedMessage();
         }
+    }
+
+    public int convertDbm(int dbm) {
+        int oldRange = -48 - 110;
+        int newRange = 64 - 0;
+        int newValue = (((dbm - 110) * newRange) / oldRange) + 0;
+        LOG.debug("converted {}dbm to {}", dbm, newValue);
+        return newValue;
     }
 
 }

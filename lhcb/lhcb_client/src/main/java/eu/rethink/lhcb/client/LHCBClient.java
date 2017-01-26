@@ -288,6 +288,13 @@ public class LHCBClient {
      * Stop the LHCB Client.
      */
     public void stop() {
+        try {
+            connectivityMonitorInstance.stopRunner();
+        } catch (Exception e) {
+            //e.printStackTrace();
+            LOG.warn("error while trying to stop connectivityMonitorInstance", e);
+        }
+
         if (client != null) {
             client.stop(true);
         }

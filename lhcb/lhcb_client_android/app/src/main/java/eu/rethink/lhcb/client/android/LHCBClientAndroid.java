@@ -19,6 +19,7 @@ package eu.rethink.lhcb.client.android;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -48,6 +49,7 @@ public class LHCBClientAndroid extends AppCompatActivity {
 
     private static final Logger LOG = LoggerFactory.getLogger(LHCBClientAndroid.class);
     private LHCBClient lhcbClient = null;
+    private Switch switchBtn = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,7 +101,7 @@ public class LHCBClientAndroid extends AppCompatActivity {
         t.start();
 
         // switch that starts and stops the LHCB Client
-        Switch switchBtn = (Switch) findViewById(R.id.connect_switch);
+        switchBtn = (Switch) findViewById(R.id.connect_switch);
         switchBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -126,8 +128,7 @@ public class LHCBClientAndroid extends AppCompatActivity {
                     lhcbClient.start();
                     //
                 } else {
-                    //buttonView.setText("disconnected");
-                    lhcbClient.stop();
+                    stopClient();
                 }
             }
         });
@@ -146,9 +147,34 @@ public class LHCBClientAndroid extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (lhcbClient != null) {
-            lhcbClient.stop();
-            lhcbClient.getConnectivityMonitorInstance().stopRunner();
-        }
+        stopClient();
     }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopClient();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        switchBtn.setChecked(false);
+    }
+
+    private void stopClient() {
+        AsyncTask<Integer, Integer, Integer> blub = new AsyncTask<Integer, Integer, Integer>() {
+            @Override
+            protected Integer doInBackground(Integer... params) {
+                if (lhcbClient != null) {
+                    lhcbClient.stop();
+                    lhcbClient.getConnectivityMonitorInstance().stopRunner();
+                    return 0;
+                }
+                return 1;
+            }
+        };
+        blub.execute();
+    }
+
 }
