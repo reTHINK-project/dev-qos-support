@@ -29,6 +29,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.eclipse.leshan.core.model.ObjectModel;
 import org.eclipse.leshan.server.californium.LeshanServerBuilder;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.slf4j.Logger;
@@ -42,16 +43,20 @@ public class LHCBBroker {
     private static final Logger LOG = LoggerFactory.getLogger(LHCBBroker.class);
 
     private LeshanServer leshanServer;
-    private Server server;
+    public static Server server;
 
     private int httpPort = 8080;
-    private int httpsPort = 8443;
+    public static int httpsPort = 8443;
     private int coapPort = 5683;
     private int coapsPort = 5684;
+    public static String externalHost = null;
 
     private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+
+    public static ObjectModel cMObjectModel;
+    public static RequestHandler requestHandler;
 
     public LHCBBroker() {
         LOG.info("LHCB Broker Version {}", getClass().getPackage().getImplementationVersion());
@@ -152,7 +157,11 @@ public class LHCBBroker {
         lsb.setLocalAddress("0", coapPort);
         lsb.setLocalSecureAddress("0", coapsPort);
         lsb.setObjectModelProvider(new CustomModelProvider());
+
         leshanServer = lsb.build();
+
+        cMObjectModel = leshanServer.getModelProvider().getObjectModel(null).getObjectModel(4);
+
         leshanServer.start();
 
         // Now prepare and start jetty
@@ -206,8 +215,7 @@ public class LHCBBroker {
         server.setHandler(root);
 
         //ServletContextHandler servletContextHandler = new ServletContextHandler(server, "/", true, false);
-        RequestHandler requestHandler = new RequestHandler(leshanServer);
-        BrokerWebSocketServlet.requestHandler = requestHandler; // TODO: any way to make this more intuitive? Static reference needed by WebSocketListener
+        requestHandler = new RequestHandler(leshanServer);
 
         root.addServlet(new ServletHolder(new WellKnownServlet(requestHandler)), "/.well-known/*");
         root.addServlet(new ServletHolder(new BrokerWebSocketServlet()), "/ws/*");

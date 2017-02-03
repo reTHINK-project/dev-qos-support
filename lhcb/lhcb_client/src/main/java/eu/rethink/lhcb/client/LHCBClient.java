@@ -18,11 +18,9 @@
 
 package eu.rethink.lhcb.client;
 
-import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
-import eu.rethink.lhcb.client.objects.ConnectivityMonitorDummy;
-import eu.rethink.lhcb.client.objects.ConnectivityMonitorSimple;
-import eu.rethink.lhcb.client.objects.Device;
+import eu.rethink.lhcb.client.objects.*;
 import eu.rethink.lhcb.client.websocket.ClientWebSocketServlet;
+import eu.rethink.lhcb.utils.Utils;
 import org.eclipse.californium.core.network.config.NetworkConfig;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.*;
@@ -30,6 +28,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.eclipse.leshan.client.californium.LeshanClient;
 import org.eclipse.leshan.client.californium.LeshanClientBuilder;
 import org.eclipse.leshan.client.resource.LwM2mObjectEnabler;
@@ -48,6 +47,7 @@ import java.security.KeyStore;
 import java.util.List;
 import java.util.Random;
 
+import static eu.rethink.lhcb.utils.Utils.gson;
 import static org.eclipse.leshan.LwM2mId.*;
 import static org.eclipse.leshan.client.object.Security.noSec;
 
@@ -60,15 +60,17 @@ public class LHCBClient {
     private LeshanClient client = null;
 
     // adjustable parameters
-    private String serverHost = "localhost";
+    public static String serverHost = "localhost";
     private int serverPort = 5683;
-    public static ConnectivityMonitor connectivityMonitorInstance = null;
-    private String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
+    public ConnectivityMonitor connectivityMonitorInstance = null;
+    public static LwM2mObjectEnabler connectivityMonitorEnabler;
+    public static String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
     private Server server;
     private KeyStore keyStore = null;
     private String keyStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
+    public static WebSocketClient webSocketClient;
 
     public LHCBClient() {
         LOG.info("LHCB Client Version {}", getClass().getPackage().getImplementationVersion());
@@ -172,12 +174,16 @@ public class LHCBClient {
         NetworkConfig.createStandardWithoutFile();
         // get default models
         List<ObjectModel> objectModels = ObjectLoader.loadDefault();
+        objectModels.addAll(Utils.getCustomObjectModels());
+
+        LOG.debug("objectModels: {}", gson.toJson(objectModels));
 
         // Initialize object list
         ObjectsInitializer initializer = new ObjectsInitializer(new LwM2mModel(objectModels));
 
         // set dummy Device
         initializer.setClassForObject(3, Device.class);
+        //initializer.setClassForObject(3000, ExtendedDevice.class);
         //initializer.setClassForObject(4, connectivityMonitorClass);
         if (connectivityMonitorInstance == null)
             connectivityMonitorInstance = new ConnectivityMonitorSimple();
@@ -271,17 +277,34 @@ public class LHCBClient {
 
         initializer.setInstancesForObject(SECURITY, noSec(serverURI, 123));
         initializer.setInstancesForObject(SERVER, new org.eclipse.leshan.client.object.Server(123, 30, BindingMode.U, false));
+        initializer.setInstancesForObject(3000, new ExtendedDevice());
 
-        List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
+        List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING, 3000); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
+        for (LwM2mObjectEnabler enabler : enablers) {
+            if (enabler.getObjectModel().id == CONNECTIVITY_MONITORING) {
+                LOG.info("found correct ENABLER");
+                connectivityMonitorEnabler = enabler;
+                break;
+            }
+        }
 
         // Create client
         LeshanClientBuilder builder = new LeshanClientBuilder(name);
         //builder.setLocalAddress(localAddress, localPort);
         //builder.setLocalSecureAddress(secureLocalAddress, secureLocalPort);
         builder.setObjects(enablers);
+
         client = builder.build();
         // Start the client
         client.start();
+
+        // initialize WebSocketClient
+        webSocketClient = new WebSocketClient(sslContextFactory);
+        try {
+            webSocketClient.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -297,6 +320,13 @@ public class LHCBClient {
 
         if (client != null) {
             client.stop(true);
+        }
+
+        try {
+            server.stop();
+        } catch (Exception e) {
+            //e.printStackTrace();
+            LOG.warn("error while trying to stop http server", e);
         }
     }
 

@@ -16,18 +16,15 @@
  *
  */
 
-package eu.rethink.lhcb.broker.servlet;
+package eu.rethink.lhcb.utils;
 
-import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
-import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+import eu.rethink.lhcb.utils.message.Message;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * Created by Robert Ende on 01.02.17.
  */
-public class BrokerWebSocketServlet extends WebSocketServlet {
+public interface RequestCallback {
+    void response(Message msg);
 
-    @Override
-    public void configure(WebSocketServletFactory webSocketServletFactory) {
-        webSocketServletFactory.register(BrokerWebSocketListener.class);
-    }
+    void error(Exception e);
 }

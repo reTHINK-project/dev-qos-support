@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.util.List;
 
+import static eu.rethink.lhcb.utils.Utils.gson;
+
 /**
  * An implementation of LwM2mModelProvider (very similar to StandardModelProvider)
  * that adds the custom models from model.json to the list of models
@@ -46,6 +48,7 @@ public class CustomModelProvider implements LwM2mModelProvider {
         // add custom models from model.json
         InputStream modelStream = getClass().getResourceAsStream("/model.json");
         models.addAll(ObjectLoader.loadJsonStream(modelStream));
+        LOG.debug("model: {}", gson.toJson(models));
         this.model = new LwM2mModel(models);
     }
 

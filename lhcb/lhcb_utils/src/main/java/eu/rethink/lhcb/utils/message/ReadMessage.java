@@ -16,28 +16,21 @@
  *
  */
 
-package eu.rethink.lhcb.broker.message.exception;
+package eu.rethink.lhcb.utils.message;
+
+import com.google.gson.JsonElement;
+import eu.rethink.lhcb.utils.message.exception.InvalidMessageException;
 
 /**
- * Created by Robert Ende on 10.11.16.
+ * Created by Robert Ende on 01.02.17.
  */
-public class InvalidMessageException extends Exception {
-    public InvalidMessageException() {
+public class ReadMessage extends Message {
+
+    public ReadMessage(String client, JsonElement value) throws InvalidMessageException {
+        super(client, value, Type.read);
     }
 
-    public InvalidMessageException(String s) {
-        super(s);
-    }
-
-    public InvalidMessageException(String s, Throwable throwable) {
-        super(s, throwable);
-    }
-
-    public InvalidMessageException(Throwable throwable) {
-        super(throwable);
-    }
-
-    public InvalidMessageException(String s, Throwable throwable, boolean b, boolean b1) {
-        super(s, throwable, b, b1);
+    public ReadMessage(int mid, String client, JsonElement value) throws InvalidMessageException {
+        super(client, value, Type.read);
     }
 }

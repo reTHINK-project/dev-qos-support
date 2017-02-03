@@ -23,13 +23,11 @@ import eu.rethink.lhcb.utils.Tuple;
 import eu.rethink.lhcb.utils.Utils;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.model.ResourceModel;
+import org.eclipse.leshan.core.response.ExecuteResponse;
 import org.eclipse.leshan.core.response.ReadResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -388,6 +386,12 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
         }
     }
 
+    @Override
+    public ExecuteResponse execute(int resourceid, String params) {
+        LOG.debug("Execute Baby! On " + resourceid + " with " + params);
+        return super.execute(resourceid, params);
+    }
+
     /**
      * Allows to call fireResourcesChange to accept a Set.
      *
@@ -439,25 +443,8 @@ public class ConnectivityMonitor extends BaseInstanceEnabler {
      * @return JSON String representation of this instance
      */
     public String toJson() {
+
         return Utils.gson.toJson(getVarMap());
-    }
-
-    public String changeIface(String name, String password) {
-        Process p = null;
-        try {
-            p = Runtime.getRuntime().exec("nmcli d wifi connect " + name + " password " + password);
-            BufferedReader resultBuffer = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String result = "";
-            String line;
-            while ((line = resultBuffer.readLine()) != null) {
-                result += line;
-            }
-            return result;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            return e.getLocalizedMessage();
-        }
     }
 
     public int convertDbm(int dbm) {

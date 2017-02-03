@@ -18,6 +18,8 @@
 
 package eu.rethink.lhcb.client.objects;
 
+import com.google.gson.JsonArray;
+import eu.rethink.lhcb.utils.Utils;
 import org.eclipse.leshan.client.resource.BaseInstanceEnabler;
 import org.eclipse.leshan.core.response.ExecuteResponse;
 import org.eclipse.leshan.core.response.ReadResponse;
@@ -25,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
+
+import static eu.rethink.lhcb.utils.Utils.gson;
 
 /**
  * A small custom Instance that holds extra information about the LHCB Client
@@ -46,6 +50,18 @@ public class ExtendedDevice extends BaseInstanceEnabler {
 
     @Override
     public ExecuteResponse execute(int resourceid, String params) {
+        LOG.debug("execute on " + resourceid + " with params " + params);
+        JsonArray array = gson.fromJson(params, JsonArray.class);
+        switch (resourceid) {
+            case 0:
+                String ssid = array.get(0).getAsString();
+                String pw = null;
+                if (array.size() > 1)
+                    pw = array.get(1).getAsString();
+
+                Utils.changeIface(ssid, pw);
+                return ExecuteResponse.success();
+        }
         return super.execute(resourceid, params);
     }
 }

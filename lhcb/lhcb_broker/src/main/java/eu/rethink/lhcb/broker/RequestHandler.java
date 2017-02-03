@@ -18,19 +18,22 @@
 
 package eu.rethink.lhcb.broker;
 
-import eu.rethink.lhcb.broker.message.Message;
-import eu.rethink.lhcb.broker.message.exception.InvalidMessageException;
-import org.eclipse.leshan.core.node.LwM2mNodeVisitor;
-import org.eclipse.leshan.core.node.LwM2mObject;
-import org.eclipse.leshan.core.node.LwM2mObjectInstance;
-import org.eclipse.leshan.core.node.LwM2mResource;
+import com.google.gson.JsonObject;
+import eu.rethink.lhcb.utils.RequestCallback;
+import eu.rethink.lhcb.utils.message.ExecuteMessage;
+import eu.rethink.lhcb.utils.message.Message;
+import eu.rethink.lhcb.utils.message.exception.InvalidMessageException;
+import org.eclipse.leshan.core.request.ExecuteRequest;
 import org.eclipse.leshan.core.request.ReadRequest;
 import org.eclipse.leshan.server.californium.impl.LeshanServer;
 import org.eclipse.leshan.server.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
+
 import static eu.rethink.lhcb.utils.Utils.gson;
+import static eu.rethink.lhcb.utils.Utils.parseCMReadResponse;
 
 /**
  * Created by Robert Ende on 10.11.16.
@@ -55,18 +58,10 @@ public class RequestHandler {
             } catch (InvalidMessageException e) {
                 cb.error(e);
             }
-        } else if (msg.type != Message.Type.read && msg.type != Message.Type.write) {
-            String error = "Unsupported message type: " + msg.type;
-            LOG.debug(error);
-            try {
-                cb.response(msg.errorResponse(error));
-            } catch (InvalidMessageException e) {
-                cb.error(e);
-            }
         } else if (msg.getClient() == null) {
             LOG.debug("No Client provided -> Returning all clients");
             try {
-                cb.response(msg.response(server.getClientRegistry().allClients()));
+                cb.response(msg.response(gson.toJsonTree(server.getClientRegistry().allClients())));
             } catch (InvalidMessageException e) {
                 cb.error(e);
             }
@@ -78,43 +73,34 @@ public class RequestHandler {
 
                     server.send(client, request, (response) -> {
                         LOG.debug("Got response for request: {}", request);
-                        response.getContent().accept(new LwM2mNodeVisitor() {
-                            @Override
-                            public void visit(LwM2mObject object) {
-                                String error = "Got object instead of instance! This should not happen!";
-                                LOG.error(error);
-                                try {
-                                    cb.response(msg.errorResponse(error));
-                                } catch (InvalidMessageException e) {
-                                    cb.error(e);
-                                }
-                            }
 
-                            @Override
-                            public void visit(LwM2mObjectInstance instance) {
-                                // requested complete instance
-                                String responseText = gson.toJson(instance);
-                                LOG.trace("visit instance: {}", responseText);
-                                try {
-                                    cb.response(msg.response(gson.toJsonTree(instance.getResources())));
-                                } catch (InvalidMessageException e) {
-                                    cb.error(e);
-                                }
-                            }
-
-                            @Override
-                            public void visit(LwM2mResource resource) {
-                                String error = "Got resource instead of instance! This should not happen!";
-                                LOG.error(error);
-                                try {
-                                    cb.response(msg.errorResponse(error));
-                                } catch (InvalidMessageException e) {
-                                    cb.error(e);
-                                }
+                        CompletableFuture<JsonObject> promise = parseCMReadResponse(LHCBBroker.cMObjectModel, response);
+                        promise.thenAccept(jsonObject -> {
+                            try {
+                                cb.response(msg.response(jsonObject));
+                            } catch (InvalidMessageException e) {
+                                cb.error(e);
                             }
                         });
                     }, e -> {
                         LOG.error("ReadRequest " + request.toString() + " to " + client.getEndpoint() + " failed", e);
+                        try {
+                            cb.response(msg.errorResponse(e));
+                        } catch (InvalidMessageException e1) {
+                            cb.error(e);
+                        }
+                    });
+                } else if (msg instanceof ExecuteMessage) {
+                    ExecuteRequest request = new ExecuteRequest(3000, 0, 0, ((ExecuteMessage) msg).getArgs().toString());
+                    server.send(client, request, (response) -> {
+                        LOG.debug("Got response: {}", response);
+                        try {
+                            cb.response(msg.response(null));
+                        } catch (InvalidMessageException e) {
+                            e.printStackTrace();
+                        }
+                    }, e -> {
+                        LOG.error("ExecuteRequest " + request.toString() + " to " + client.getEndpoint() + " failed", e);
                         try {
                             cb.response(msg.errorResponse(e));
                         } catch (InvalidMessageException e1) {
@@ -132,11 +118,5 @@ public class RequestHandler {
                 }
             }
         }
-    }
-
-    public interface RequestCallback {
-        void response(Message msg);
-
-        void error(Exception e);
     }
 }

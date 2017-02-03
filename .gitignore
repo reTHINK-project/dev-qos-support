@@ -10,3 +10,4 @@ gen
 /data/
 
 broker/BrokerServer/sslkeys/*.pem
+node_modules

@@ -8,8 +8,8 @@
     "resourcedefs": [
       {
         "id": 0,
-        "name": "did",
-        "operations": "RW",
+        "name": "changeIface",
+        "operations": "E",
         "instancetype": "single",
         "mandatory": true,
         "type": "string",

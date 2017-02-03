@@ -16,18 +16,28 @@
  *
  */
 
-package eu.rethink.lhcb.broker.servlet;
-
-import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
-import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
+package eu.rethink.lhcb.utils.message.exception;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * Created by Robert Ende on 10.11.16.
  */
-public class BrokerWebSocketServlet extends WebSocketServlet {
+public class InvalidMessageException extends Exception {
+    public InvalidMessageException() {
+    }
 
-    @Override
-    public void configure(WebSocketServletFactory webSocketServletFactory) {
-        webSocketServletFactory.register(BrokerWebSocketListener.class);
+    public InvalidMessageException(String s) {
+        super(s);
+    }
+
+    public InvalidMessageException(String s, Throwable throwable) {
+        super(s, throwable);
+    }
+
+    public InvalidMessageException(Throwable throwable) {
+        super(throwable);
+    }
+
+    public InvalidMessageException(String s, Throwable throwable, boolean b, boolean b1) {
+        super(s, throwable, b, b1);
     }
 }

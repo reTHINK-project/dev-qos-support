@@ -18,9 +18,11 @@
 
 package eu.rethink.lhcb.broker.servlet;
 
+import eu.rethink.lhcb.broker.LHCBBroker;
 import eu.rethink.lhcb.broker.RequestHandler;
-import eu.rethink.lhcb.broker.message.Message;
-import eu.rethink.lhcb.broker.message.exception.InvalidMessageException;
+import eu.rethink.lhcb.utils.RequestCallback;
+import eu.rethink.lhcb.utils.message.Message;
+import eu.rethink.lhcb.utils.message.exception.InvalidMessageException;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +65,11 @@ public class WellKnownServlet extends HttpServlet {
     private void handleRequest(HttpServletRequest req, final HttpServletResponse resp) throws ServletException, IOException {
 
         resp.addHeader("Access-Control-Allow-Origin", "*");
+        String host = req.getHeader("X-Forwarded-Host");
+        if (host == null)
+            host = req.getHeader("Host");
+
+        LHCBBroker.externalHost = host;
         final AsyncContext asyncContext = req.startAsync();
         asyncContext.start(() -> {
             ServletRequest aReq = asyncContext.getRequest();
@@ -78,7 +85,7 @@ public class WellKnownServlet extends HttpServlet {
             Map<String, String[]> params = aReq.getParameterMap();
             LOG.debug("payload: {}\r\nparams: {}", payload, params);
 
-            RequestHandler.RequestCallback cb = new RequestHandler.RequestCallback() {
+            RequestCallback cb = new RequestCallback() {
 
                 @Override
                 public void response(Message msg) {

@@ -18,13 +18,28 @@
 
 package eu.rethink.lhcb.client.websocket;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import eu.rethink.lhcb.client.LHCBClient;
 import eu.rethink.lhcb.utils.Utils;
+import eu.rethink.lhcb.utils.message.ExecuteMessage;
+import eu.rethink.lhcb.utils.message.Message;
+import eu.rethink.lhcb.utils.message.ReadMessage;
+import eu.rethink.lhcb.utils.message.exception.InvalidMessageException;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
+import org.eclipse.leshan.client.request.ServerIdentity;
+import org.eclipse.leshan.core.request.ReadRequest;
+import org.eclipse.leshan.core.response.ReadResponse;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * Created by Robert Ende on 15.11.16.
@@ -48,47 +63,162 @@ public class ClientWebSocketListener implements WebSocketListener {
     public void onWebSocketConnect(Session session) {
         this.outbound = session;
         LOG.info("WebSocket Connect: {}", session);
-        this.outbound.getRemote().sendString("You are now connected to " + this.getClass().getName(), null);
     }
 
     @Override
     public void onWebSocketError(Throwable cause) {
-        LOG.warn("WebSocket Error", cause);
+        LOG.warn("WebSocket Error: {}", cause.getLocalizedMessage());
 
     }
 
     @Override
     public void onWebSocketText(String message) {
+        LOG.info("got a message: {}", message);
 
         if ((outbound != null) && (outbound.isOpen())) {
-            LOG.info("got a message: {}", message);
 
-            JsonObject jmsg = Utils.gson.fromJson(message, JsonObject.class);
-            switch (jmsg.get("type").getAsString()) {
-                case "write":
-                case "control":
-                    String ssid = null, password = null;
-                    if (jmsg.has("ssid"))
-                        ssid = jmsg.get("ssid").getAsString();
-                    if (jmsg.has("password"))
-                        password = jmsg.get("password").getAsString();
-                    if (LHCBClient.connectivityMonitorInstance != null) {
-                        outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.changeIface(ssid, password), null);
+            try {
+                Message m = Message.fromString(message);
+                //LOG.info("parsed message: {}", m);
+                if (m instanceof ReadMessage) {
+                    if (LHCBClient.connectivityMonitorEnabler != null) {
+                        ReadResponse response = LHCBClient.connectivityMonitorEnabler.read(ServerIdentity.SYSTEM, new ReadRequest(0, 0));
+                        Utils.parseCMReadResponse(LHCBClient.connectivityMonitorEnabler.getObjectModel(), response).thenAccept(jsonObject -> {
+                            try {
+                                outbound.getRemote().sendString(m.response(jsonObject).toString());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (InvalidMessageException e) {
+                                e.printStackTrace();
+                            }
+                        });
                     } else {
-                        outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
-
+                        outbound.getRemote().sendString(m.errorResponse("no connectivityMonitorInstance").toString(), null);
                     }
-                    break;
-                case "read":
-                    if (LHCBClient.connectivityMonitorInstance != null) {
-                        outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.toJson(), null);
+                } else if (m instanceof ExecuteMessage) {
+                    LOG.debug("ExecuteMessage for: {}", ((ExecuteMessage) m).getName());
+                    switch (((ExecuteMessage) m).getName().toLowerCase()) {
+                        case "changeiface":
+                            JsonObject valueObj = m.getValue().getAsJsonObject();
+                            JsonArray args = valueObj.get("args").getAsJsonArray();
+                            String ssid = args.get(0).getAsString();
+                            String pw = null;
+                            try {
+                                pw = args.get(1).getAsString();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            try {
+                                outbound.getRemote().sendString(m.response(new JsonPrimitive(Utils.changeIface(ssid, pw))).toString());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        case "getbrokerinfo":
+                            try {
+                                //TODO get real values from Broker
+                                SendReplyWebsocketAdapter adapter = new SendReplyWebsocketAdapter();
+                                LOG.debug("Connecting...");
+                                try {
+                                    Future<Session> promise = LHCBClient.webSocketClient.connect(adapter, URI.create("wss://" + LHCBClient.serverHost + ":" + 8443 + "/ws"));
+                                    LOG.debug("Waiting for session");
+                                    Session session = promise.get();
+                                } catch (ExecutionException e) {
+                                    try {
+                                        LOG.debug("Connecting with port 8443 failed, trying again with port 443");
+                                        Future<Session> promise = LHCBClient.webSocketClient.connect(adapter, URI.create("wss://" + LHCBClient.serverHost + ":" + 443 + "/ws"));
+                                        LOG.debug("Waiting for session");
+                                        Session session = promise.get();
+                                    } catch (ExecutionException e1) {
+                                        //e1.printStackTrace();
+                                        LOG.warn("All connection attempts failed. Not connected to Broker?");
+                                        outbound.getRemote().sendString(m.errorResponse("Unable to connect to LHCBBroker").toString());
+                                        return;
+                                    }
+                                }
+                                LOG.debug("got session -> connected? {}", adapter.isConnected());
 
-                    } else {
-                        outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
-
+                                Message msg = new ExecuteMessage(LHCBClient.name, "getBrokerInfo", null);
+                                CompletableFuture<Message> msgPromise = adapter.send(msg);
+                                msgPromise.thenAccept(response -> {
+                                    JsonObject value = response.getValue().getAsJsonObject();
+                                    value.addProperty("name", LHCBClient.name);
+                                    try {
+                                        outbound.getRemote().sendString(m.response(value).toString());
+                                    } catch (InvalidMessageException e) {
+                                        e.printStackTrace();
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                });
+                                //String host = "localhost";
+                                //String port = "8443";
+                                //JsonObject response = new JsonObject();
+                                //response.addProperty("host", host);
+                                //response.addProperty("port", port);
+                                //response.addProperty("name", "bob");
+                                //outbound.getRemote().sendString(m.response(response).toString(), null);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            break;
                     }
-                    break;
+
+                }
+            } catch (InvalidMessageException e) {
+                e.printStackTrace();
             }
+
+            //JsonObject jmsg = Utils.gson.fromJson(message, JsonObject.class);
+            //switch (jmsg.get("type").getAsString()) {
+            //    case "write":
+            //    case "execute":
+            //        switch (jmsg.get("name").getAsString()) {
+            //            case "changeIFace":
+            //                String ssid = null, password = null;
+            //                if (jmsg.has("ssid"))
+            //                    ssid = jmsg.get("ssid").getAsString();
+            //                if (jmsg.has("password"))
+            //                    password = jmsg.get("password").getAsString();
+            //                if (LHCBClient.connectivityMonitorEnabler != null) {
+            //                    //outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.changeIface(ssid, password), null);
+            //                } else {
+            //                    outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
+            //
+            //                }
+            //                break;
+            //            case "getBrokerInfo":
+            //                try {
+            //                    String host = "localhost";
+            //                    String port = "8443";
+            //                    JsonObject response = new JsonObject();
+            //                    response.addProperty("host", host);
+            //                    response.addProperty("port", port);
+            //                    response.addProperty("name", "bob");
+            //                    response.addProperty("response", "success!");
+            //                    outbound.getRemote().sendString(response.toString(), null);
+            //                } catch (Exception e) {
+            //                    e.printStackTrace();
+            //                }
+            //                break;
+            //        }
+            //
+            //        break;
+            //    case "read":
+            //        if (LHCBClient.connectivityMonitorEnabler != null) {
+            //            ReadResponse response = LHCBClient.connectivityMonitorEnabler.read(ServerIdentity.SYSTEM, new ReadRequest(0, 0));
+            //            Utils.parseCMReadResponse(LHCBClient.connectivityMonitorEnabler.getObjectModel(), response).thenAccept(jsonObject -> {
+            //                try {
+            //                    outbound.getRemote().sendString(gson.toJson(jsonObject));
+            //                } catch (IOException e) {
+            //                    e.printStackTrace();
+            //                }
+            //            });
+            //        } else {
+            //            outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
+            //        }
+            //        break;
+            //}
 
             //outbound.getRemote().sendString(message, null);
         }
