@@ -40,6 +40,7 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 /**
  * Created by Robert Ende on 15.11.16.
@@ -83,13 +84,16 @@ public class ClientWebSocketListener implements WebSocketListener {
                 if (m instanceof ReadMessage) {
                     if (LHCBClient.connectivityMonitorEnabler != null) {
                         ReadResponse response = LHCBClient.connectivityMonitorEnabler.read(ServerIdentity.SYSTEM, new ReadRequest(0, 0));
-                        Utils.parseCMReadResponse(LHCBClient.connectivityMonitorEnabler.getObjectModel(), response).thenAccept(jsonObject -> {
-                            try {
-                                outbound.getRemote().sendString(m.response(jsonObject).toString());
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            } catch (InvalidMessageException e) {
-                                e.printStackTrace();
+                        Utils.parseCMReadResponse(LHCBClient.connectivityMonitorEnabler.getObjectModel(), response).thenAccept(new Consumer<JsonObject>() {
+                            @Override
+                            public void accept(JsonObject jsonObject) {
+                                try {
+                                    outbound.getRemote().sendString(m.response(jsonObject).toString());
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                } catch (InvalidMessageException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         });
                     } else {
@@ -140,15 +144,18 @@ public class ClientWebSocketListener implements WebSocketListener {
 
                                 Message msg = new ExecuteMessage(LHCBClient.name, "getBrokerInfo", null);
                                 CompletableFuture<Message> msgPromise = adapter.send(msg);
-                                msgPromise.thenAccept(response -> {
-                                    JsonObject value = response.getValue().getAsJsonObject();
-                                    value.addProperty("name", LHCBClient.name);
-                                    try {
-                                        outbound.getRemote().sendString(m.response(value).toString());
-                                    } catch (InvalidMessageException e) {
-                                        e.printStackTrace();
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
+                                msgPromise.thenAccept(new Consumer<Message>() {
+                                    @Override
+                                    public void accept(Message response) {
+                                        JsonObject value = response.getValue().getAsJsonObject();
+                                        value.addProperty("name", LHCBClient.name);
+                                        try {
+                                            outbound.getRemote().sendString(m.response(value).toString());
+                                        } catch (InvalidMessageException e) {
+                                            e.printStackTrace();
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 });
                                 //String host = "localhost";

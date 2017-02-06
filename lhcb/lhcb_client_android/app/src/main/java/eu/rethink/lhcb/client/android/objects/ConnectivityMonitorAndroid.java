@@ -24,7 +24,6 @@ import android.net.Network;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.ScanResult;
-import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.provider.Telephony;
@@ -202,27 +201,6 @@ public class ConnectivityMonitorAndroid extends ConnectivityMonitor {
         addToRunner(ipRunner, gatewayRunner, cellRunner, wifiRunner);
         //addToRunner(ipRunner, gatewayRunner, wifiRunner);
         //addToRunner(connectivityRunner, cellRunner);
-    }
-
-    @Override
-    public String changeIface(String name, String password) {
-        //return super.changeIface(name, password);
-        LOG.debug("Trying to connect to {} with password {}", name, password);
-
-        WifiConfiguration wifiConfig = new WifiConfiguration();
-        wifiConfig.SSID = String.format("\"%s\"", name);
-        wifiConfig.preSharedKey = String.format("\"%s\"", password);
-
-        WifiManager wifiManager = (WifiManager) this.context.getSystemService(WIFI_SERVICE);
-        //remember id
-        int netId = wifiManager.addNetwork(wifiConfig);
-        boolean bDisconnect = wifiManager.disconnect();
-        boolean bEnableNetwork = wifiManager.enableNetwork(netId, true);
-        boolean bReconnect = wifiManager.reconnect();
-
-        LOG.debug("connection attempt done: " + bDisconnect + bEnableNetwork + bReconnect);
-
-        return "Tried it";
     }
 
     @Override

@@ -62,7 +62,7 @@ public class LHCBClient {
     // adjustable parameters
     public static String serverHost = "localhost";
     private int serverPort = 5683;
-    public ConnectivityMonitor connectivityMonitorInstance = null;
+    private ConnectivityMonitor connectivityMonitorInstance = null;
     public static LwM2mObjectEnabler connectivityMonitorEnabler;
     public static String name = String.valueOf(new Random().nextInt(Integer.MAX_VALUE));
     private Server server;
@@ -71,6 +71,7 @@ public class LHCBClient {
     private String keyManagerPassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     private String trustStorePassword = "OBF:1vub1vnw1shm1y851vgl1vg91y7t1shw1vn61vuz";
     public static WebSocketClient webSocketClient;
+    private ExtendedDevice extendedDevice = null;
 
     public LHCBClient() {
         LOG.info("LHCB Client Version {}", getClass().getPackage().getImplementationVersion());
@@ -139,6 +140,14 @@ public class LHCBClient {
      */
     public ConnectivityMonitor getConnectivityMonitorInstance() {
         return connectivityMonitorInstance;
+    }
+
+    public ExtendedDevice getExtendedDevice() {
+        return extendedDevice;
+    }
+
+    public void setExtendedDevice(ExtendedDevice extendedDevice) {
+        this.extendedDevice = extendedDevice;
     }
 
     /**
@@ -277,7 +286,11 @@ public class LHCBClient {
 
         initializer.setInstancesForObject(SECURITY, noSec(serverURI, 123));
         initializer.setInstancesForObject(SERVER, new org.eclipse.leshan.client.object.Server(123, 30, BindingMode.U, false));
-        initializer.setInstancesForObject(3000, new ExtendedDevice());
+
+        if (extendedDevice == null)
+            extendedDevice = new ExtendedDevice();
+
+        initializer.setInstancesForObject(3000, extendedDevice);
 
         List<LwM2mObjectEnabler> enablers = initializer.create(SECURITY, SERVER, DEVICE, CONNECTIVITY_MONITORING, 3000); // 0 = ?, 1 = accessControl, 3 = Device, 4 = ConMon
         for (LwM2mObjectEnabler enabler : enablers) {

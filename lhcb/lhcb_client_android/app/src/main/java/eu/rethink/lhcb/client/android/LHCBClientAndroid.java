@@ -24,12 +24,12 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
 import android.widget.TextView;
 import eu.rethink.lhcb.client.LHCBClient;
 import eu.rethink.lhcb.client.android.objects.ConnectivityMonitorAndroid;
+import eu.rethink.lhcb.client.android.objects.ExtendedDeviceAndroid;
 import eu.rethink.lhcb.client.objects.ConnectivityMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +61,7 @@ public class LHCBClientAndroid extends AppCompatActivity {
         final ConnectivityMonitor cmInstance = new ConnectivityMonitorAndroid(getApplicationContext());
         //cmInstance.startRunner();
         lhcbClient.setConnectivityMonitorInstance(cmInstance);
+        lhcbClient.setExtendedDevice(new ExtendedDeviceAndroid(getApplicationContext()));
 
         // --- get layout elements ---
         // Broker IP
@@ -102,34 +103,31 @@ public class LHCBClientAndroid extends AppCompatActivity {
 
         // switch that starts and stops the LHCB Client
         switchBtn = (Switch) findViewById(R.id.connect_switch);
-        switchBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    //buttonView.setText("connected");
-                    lhcbClient.setServerHost(brokerIp.getText().toString());
-                    lhcbClient.setServerPort(Integer.parseInt(brokerPort.getText().toString()));
-                    lhcbClient.setName(clientName.getText().toString());
-                    InputStream inputStream = getResources().openRawResource(R.raw.keystore);
-                    try {
-                        LOG.debug("Trying to load BKS KeyStore");
-                        KeyStore bks = KeyStore.getInstance("BKS");
-                        bks.load(inputStream, "fraunhofer".toCharArray());
-                        lhcbClient.setKeyStore(bks);
-                    } catch (KeyStoreException e) {
-                        e.printStackTrace();
-                    } catch (CertificateException e) {
-                        e.printStackTrace();
-                    } catch (NoSuchAlgorithmException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    lhcbClient.start();
-                    //
-                } else {
-                    stopClient();
+        switchBtn.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                //buttonView.setText("connected");
+                lhcbClient.setServerHost(brokerIp.getText().toString());
+                lhcbClient.setServerPort(Integer.parseInt(brokerPort.getText().toString()));
+                lhcbClient.setName(clientName.getText().toString());
+                InputStream inputStream = getResources().openRawResource(R.raw.keystore);
+                try {
+                    LOG.debug("Trying to load BKS KeyStore");
+                    KeyStore bks = KeyStore.getInstance("BKS");
+                    bks.load(inputStream, "fraunhofer".toCharArray());
+                    lhcbClient.setKeyStore(bks);
+                } catch (KeyStoreException e) {
+                    e.printStackTrace();
+                } catch (CertificateException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+                lhcbClient.start();
+                //
+            } else {
+                stopClient();
             }
         });
 
