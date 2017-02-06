@@ -43,7 +43,7 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * WebSocketListener of the Client that handles incoming messages
  */
 public class ClientWebSocketListener implements WebSocketListener {
     private static final Logger LOG = Log.getLogger(ClientWebSocketListener.class);
@@ -158,76 +158,15 @@ public class ClientWebSocketListener implements WebSocketListener {
                                         }
                                     }
                                 });
-                                //String host = "localhost";
-                                //String port = "8443";
-                                //JsonObject response = new JsonObject();
-                                //response.addProperty("host", host);
-                                //response.addProperty("port", port);
-                                //response.addProperty("name", "bob");
-                                //outbound.getRemote().sendString(m.response(response).toString(), null);
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                             break;
                     }
-
                 }
             } catch (InvalidMessageException e) {
                 e.printStackTrace();
             }
-
-            //JsonObject jmsg = Utils.gson.fromJson(message, JsonObject.class);
-            //switch (jmsg.get("type").getAsString()) {
-            //    case "write":
-            //    case "execute":
-            //        switch (jmsg.get("name").getAsString()) {
-            //            case "changeIFace":
-            //                String ssid = null, password = null;
-            //                if (jmsg.has("ssid"))
-            //                    ssid = jmsg.get("ssid").getAsString();
-            //                if (jmsg.has("password"))
-            //                    password = jmsg.get("password").getAsString();
-            //                if (LHCBClient.connectivityMonitorEnabler != null) {
-            //                    //outbound.getRemote().sendString(LHCBClient.connectivityMonitorInstance.changeIface(ssid, password), null);
-            //                } else {
-            //                    outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
-            //
-            //                }
-            //                break;
-            //            case "getBrokerInfo":
-            //                try {
-            //                    String host = "localhost";
-            //                    String port = "8443";
-            //                    JsonObject response = new JsonObject();
-            //                    response.addProperty("host", host);
-            //                    response.addProperty("port", port);
-            //                    response.addProperty("name", "bob");
-            //                    response.addProperty("response", "success!");
-            //                    outbound.getRemote().sendString(response.toString(), null);
-            //                } catch (Exception e) {
-            //                    e.printStackTrace();
-            //                }
-            //                break;
-            //        }
-            //
-            //        break;
-            //    case "read":
-            //        if (LHCBClient.connectivityMonitorEnabler != null) {
-            //            ReadResponse response = LHCBClient.connectivityMonitorEnabler.read(ServerIdentity.SYSTEM, new ReadRequest(0, 0));
-            //            Utils.parseCMReadResponse(LHCBClient.connectivityMonitorEnabler.getObjectModel(), response).thenAccept(jsonObject -> {
-            //                try {
-            //                    outbound.getRemote().sendString(gson.toJson(jsonObject));
-            //                } catch (IOException e) {
-            //                    e.printStackTrace();
-            //                }
-            //            });
-            //        } else {
-            //            outbound.getRemote().sendString("{'error':'no connectivityMonitorInstance'}", null);
-            //        }
-            //        break;
-            //}
-
-            //outbound.getRemote().sendString(message, null);
         }
     }
 }

@@ -160,6 +160,7 @@ public class LHCBBroker {
 
         leshanServer = lsb.build();
 
+        // statically linking the objectModel is needed for message parsing/conversion, see RequestHandler
         cMObjectModel = leshanServer.getModelProvider().getObjectModel(null).getObjectModel(4);
 
         leshanServer.start();

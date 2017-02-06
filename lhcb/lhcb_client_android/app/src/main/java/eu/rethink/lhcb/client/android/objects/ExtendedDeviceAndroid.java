@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import static eu.rethink.lhcb.utils.Utils.gson;
 
 /**
- * Created by Robert Ende on 06.02.17.
+ * Extended device for Android specific handling of ExecuteRequests.
  */
 public class ExtendedDeviceAndroid extends ExtendedDevice {
     private static final Logger LOG = LoggerFactory.getLogger(ExtendedDeviceAndroid.class);

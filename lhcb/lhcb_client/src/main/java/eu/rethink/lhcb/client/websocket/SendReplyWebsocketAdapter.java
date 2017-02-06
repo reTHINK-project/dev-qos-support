@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Created by Robert Ende on 02.02.17.
+ * Special WebSocketAdapter that tries to map responses to requests sent with this adapter.
  */
 public class SendReplyWebsocketAdapter extends WebSocketAdapter {
     private static final Logger LOG = Log.getLogger(SendReplyWebsocketAdapter.class);

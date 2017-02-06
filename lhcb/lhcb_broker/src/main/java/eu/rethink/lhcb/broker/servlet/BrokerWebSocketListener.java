@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * WebSocketListener of the Broker that handles incoming messages with the RequestHandler
  */
 public class BrokerWebSocketListener implements WebSocketListener {
     private static final Logger LOG = LoggerFactory.getLogger(BrokerWebSocketListener.class);
@@ -56,18 +56,18 @@ public class BrokerWebSocketListener implements WebSocketListener {
     public void onWebSocketConnect(Session session) {
         this.outbound = session;
         LOG.info("WebSocket Connect: {}", session);
-        LOG.debug("getLocalAddress: {}", session.getLocalAddress());
-        LOG.debug("getRemoteAddress: {}", session.getRemoteAddress());
+        //LOG.trace("getLocalAddress: {}", session.getLocalAddress());
+        //LOG.trace("getRemoteAddress: {}", session.getRemoteAddress());
         //LOG.debug("getRemote: {}", Utils.gson.toJson(session.getRemote()));
         UpgradeRequest upgradeRequest = session.getUpgradeRequest();
-        LOG.debug("upgradeRequest.getExtensions(): {}", upgradeRequest.getExtensions());
-        LOG.debug("upgradeRequest.getHeaders(): {}", upgradeRequest.getHeaders());
-        LOG.debug("upgradeRequest.getHost(): {}", upgradeRequest.getHost());
-        LOG.debug("upgradeRequest.getHeader('Host'): {}", upgradeRequest.getHeader("Host"));
-        LOG.debug("upgradeRequest.getMethod(): {}", upgradeRequest.getMethod());
-        LOG.debug("upgradeRequest.getOrigin(): {}", upgradeRequest.getOrigin());
-        LOG.debug("upgradeRequest.getParameterMap(): {}", upgradeRequest.getParameterMap());
-        LOG.debug("upgradeRequest.getRequestURI(): {}", upgradeRequest.getRequestURI());
+        //LOG.trace("upgradeRequest.getExtensions(): {}", upgradeRequest.getExtensions());
+        //LOG.trace("upgradeRequest.getHeaders(): {}", upgradeRequest.getHeaders());
+        //LOG.trace("upgradeRequest.getHost(): {}", upgradeRequest.getHost());
+        //LOG.trace("upgradeRequest.getHeader('Host'): {}", upgradeRequest.getHeader("Host"));
+        //LOG.trace("upgradeRequest.getMethod(): {}", upgradeRequest.getMethod());
+        //LOG.trace("upgradeRequest.getOrigin(): {}", upgradeRequest.getOrigin());
+        //LOG.trace("upgradeRequest.getParameterMap(): {}", upgradeRequest.getParameterMap());
+        //LOG.trace("upgradeRequest.getRequestURI(): {}", upgradeRequest.getRequestURI());
         //LOG.debug("getUpgradeResponse: {}", Utils.gson.toJson(session.getUpgradeResponse()));
 
         //this.outbound.getRemote().sendString("You are now connected to " + this.getClass().getName(), null);
@@ -84,10 +84,12 @@ public class BrokerWebSocketListener implements WebSocketListener {
         if ((outbound != null) && (outbound.isOpen()) && LHCBBroker.requestHandler != null) {
             //LOG.info("Echoing back text message [{}]", message);
             try {
+                // parse message
                 Message msg = Message.fromString(message);
                 LOG.debug("got Message: {}", msg.toString());
 
                 if (msg instanceof ReadMessage) {
+                    // handle ReadRequests
                     RequestCallback cb = new RequestCallback() {
 
                         @Override
@@ -111,11 +113,13 @@ public class BrokerWebSocketListener implements WebSocketListener {
                         }
                     };
 
+                    // handle request, respond with result handled by callback
                     LHCBBroker.requestHandler.handleRequest(msg, cb);
                 } else if (msg instanceof ExecuteMessage) {
                     LOG.debug("Is ExecuteMessage");
+                    // handle ExecuteRequests
                     switch (((ExecuteMessage) msg).getName().toLowerCase()) {
-                        case "getbrokerinfo":
+                        case "getbrokerinfo": // getBrokerInfo returns host and port of Broker HTTP interface
                             JsonObject response = new JsonObject();
 
                             String[] splitHost = null;
@@ -129,7 +133,7 @@ public class BrokerWebSocketListener implements WebSocketListener {
                                 e.printStackTrace();
                             }
                             break;
-                        case "changeiface":
+                        case "changeiface": // changeIface is a request to connect to a specific WiFi network
                             RequestCallback cb = new RequestCallback() {
 
                                 @Override

@@ -44,8 +44,6 @@ public class WellKnownServlet extends HttpServlet {
 
     private RequestHandler requestHandler;
 
-    private static final String WELLKNOWN_PREFIX = "/.well-known";
-
     public WellKnownServlet(RequestHandler requestHandler) {
         this.requestHandler = requestHandler;
     }
@@ -64,11 +62,14 @@ public class WellKnownServlet extends HttpServlet {
 
     private void handleRequest(HttpServletRequest req, final HttpServletResponse resp) throws ServletException, IOException {
 
+        // add header for cross domain stuff
         resp.addHeader("Access-Control-Allow-Origin", "*");
         String host = req.getHeader("X-Forwarded-Host");
         if (host == null)
             host = req.getHeader("Host");
 
+        // setting external host here helps BrokerWebSocketListener to return info about HTTP interface
+        // Broker might not know how it is accessible. This is a workaround for it
         LHCBBroker.externalHost = host;
         final AsyncContext asyncContext = req.startAsync();
         asyncContext.start(() -> {

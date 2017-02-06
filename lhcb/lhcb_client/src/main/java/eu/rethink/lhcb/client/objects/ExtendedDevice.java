@@ -31,7 +31,7 @@ import java.util.Random;
 import static eu.rethink.lhcb.utils.Utils.gson;
 
 /**
- * A small custom Instance that holds extra information about the LHCB Client
+ * A small custom Instance that serves to receive ExecuteRequests invoking LHCB specific behaviour.
  */
 public class ExtendedDevice extends BaseInstanceEnabler {
     private static final Logger LOG = LoggerFactory.getLogger(ExtendedDevice.class);

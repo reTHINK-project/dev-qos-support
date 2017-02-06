@@ -22,12 +22,14 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * Servlet for the BrokerWebSocketListener
  */
 public class BrokerWebSocketServlet extends WebSocketServlet {
 
     @Override
     public void configure(WebSocketServletFactory webSocketServletFactory) {
+
+        // register BrokerWebSocketListener, that's all
         webSocketServletFactory.register(BrokerWebSocketListener.class);
     }
 }

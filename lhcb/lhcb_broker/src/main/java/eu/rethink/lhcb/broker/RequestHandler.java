@@ -36,7 +36,7 @@ import static eu.rethink.lhcb.utils.Utils.gson;
 import static eu.rethink.lhcb.utils.Utils.parseCMReadResponse;
 
 /**
- * Created by Robert Ende on 10.11.16.
+ * This class translates requests coming from outside to LwM2M requests.
  */
 public class RequestHandler {
     private static final Logger LOG = LoggerFactory.getLogger(RequestHandler.class);

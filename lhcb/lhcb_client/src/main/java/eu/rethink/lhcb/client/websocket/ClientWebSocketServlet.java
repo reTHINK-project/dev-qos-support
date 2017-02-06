@@ -22,7 +22,7 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServlet;
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory;
 
 /**
- * Created by Robert Ende on 15.11.16.
+ * Servlet for the ClientWebSocketListener
  */
 public class ClientWebSocketServlet extends WebSocketServlet {
     @Override
