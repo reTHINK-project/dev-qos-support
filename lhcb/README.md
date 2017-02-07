@@ -77,80 +77,79 @@ option                      | description
 -name, -n                   | set client (endpoint) name
 -websocket, -ws             | setup WebSocketServer of ConnectivityMonitor
 
-## Using the HTTP interface
+## Using the HTTP & WebSocket interfaces
 
-The LHCB Broker HTTP interface listens on port 8080 for HTTP and 8443 for HTTPs by default.
-You can access information about a LHCB client that is connected to that Broker using the following URL path:
+### Broker HTTP
+The LHCB Broker HTTP interface listens on port 8080 for `http` and 8443 for `https` by default.
+You can access information about a LHCB client that is connected to that Broker using the following URL path, and providing the necessary information for the request:
 ```
-(http|https)://<broker_host>/.well-known/[<client_endpoint_name>/[<resource_id>]]
+(http|https)://<broker_host>/.well-known/?[<property>=<p_value>]
+```
+This is your entry point for the HTTP interface. Requests are built from the HTTP query parameters. 
 
-Resource IDs as standardized by lwM2M:
-00 = Network Bearer (Single, Mandatory, Integer)
-01 = Available Network Bearer (Multiple, Mandatory, Integer)
-02 = Radio Signal Strength (Single, Mandatory, Integer, dBm)
-03 = Link Quality (Single, Optional, Integer)
-04 = IP Addresses (Multiple, Mandatory, String)
-05 = Router IP Address (Multiple, Optional, String)
-06 = Link Utilization (Single, Optional, Integer, 1-100%)
-07 = APN (Multiple, Optional, String)
-08 = Cell ID (Single, Optional, Integer)
-09 = SMNC (Single, Optional, Integer, 0-999)
-10 = SMCC (Single, Optional, Integer, 0-999)
+### Broker WebSocket
+The LHCB Broker WebSocket interface listens on the same ports used by the HTTP interface (port 8080 for `ws` and 8443 for `wss` by default).
+You can access information about a LHCB client that is connected to that Broker by connecting to the following URL, and providing the necessary information for the request in the payload:
 ```
-Not providing `<client_endpoint_name>` returns a json array with names of all connected LHCB Clients, for example:
+(ws|wss)://<broker_host>/ws
 ```
-[
-  "1605099547",
-  "alice",
-  "358593926"
-]
+This is your entry point for the WebSocket interface. Requests are built from the message payload.
+
+### Client WebSocket
+The LHCB Client has a WebSocket interface in order to retrieve Client information locally, e.g. from the same device/network.
+
+The interface is almost identical to the Broker WebSocket interface, but serves on port 9443 by default.
+The URL is also the same:
+```
+(ws|wss)://<client_host>/ws
+```
+Just as with the Broker WebSocket interface, requests are created from the message payload.
+
+### Examples
+In order to read the state of "Alice", the corresponding requests for HTTP and WebSocket look like this:
+```
+https://localhost:8443/.well-known/?type=read&client=Alice
+
+equivalent WebSocket message:
+{
+  "type": "read",
+  "client": "alice"
+}
 ```
 
-Not providing `<resource_id>` returns all available information for an endpoint, for example:
+This is what a response from may look like:
 ```
 {
-  "0": {
-    "id": 0,
-    "value": 41,
-    "type": "INTEGER"
-  },
-  "1": {
-    "id": 1,
-    "values": {
-      "0": 41
-    },
-    "type": "INTEGER"
-  },
-  "4": {
-    "id": 4,
-    "values": {
-      "0": "172.17.0.1",
-      "1": "fe80:0:0:0:225:64ff:fe8c:57a%eth0",
-    },
-    "type": "STRING"
-  },
-  "5": {
-    "id": 5,
-    "values": {
-      "0": "192.168.1.1"
-    },
-    "type": "STRING"
+  "type": "response",
+  "mid": 3,
+  "client": "alice",
+  "value": {
+    "Network Bearer": 41,
+    "Available Network Bearer": [
+      41
+    ],
+    "IP Addresses": [
+      "123.17.0.1",
+      "10.141.65.123"
+    ],
+    "Router IP Addresse": [
+      "10.141.65.1"
+    ]
   }
 }
 ```
-As you can see, the Broker returns a map with the resource ID as keys. The resource itself contains either a "value" or "values" entry, depending on whether or not the requested resource is a single value or a list of values.
+The `mid` property is always present in the response, but optional for your requests.
+It can be provided in order to keep track of which response belongs to which request.
+If no `mid` is provided, an unused `mid` is automatically assigned.
 
-Providing endpoint name and resource ID, the HTTP interface returns the object of the resource. So if we take the above information as base, and request the resource ID "4", the HTTP interface returns:
+Not providing `client` returns a json array in the value field of the response, with names of all connected LHCB Clients, for example:
 ```
 {
-  "id": 4,
-  "values": {
-    "0": "172.17.0.1",
-    "1": "fe80:0:0:0:225:64ff:fe8c:57a%eth0",
-  },
-  "type": "STRING"
+  "type": "response",
+  "mid": 0,
+  "value": [
+    "bob",
+    "alice"
+  ]
 }
 ```
-
-## Using the WebSocket interface
-The WebSocket interface is currently being developed for the Broker. [Please take a look at draft for the message schema that will be used.](./WebSocketMessageSchema.json)

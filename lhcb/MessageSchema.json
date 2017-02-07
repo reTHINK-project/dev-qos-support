@@ -1,77 +1,55 @@
 {
-  "description": "Message Schema for the LHCB Broker WebSocket Interface",
+  "description": "Message Schema for the LHCB interfaces, including Broker HTTP & WebSocket, and Client WebSocket interface",
   "type": "object",
   "anyOf": [
     {
       "$ref": "#/Read"
     },
     {
-      "$ref": "#/Write"
+      "$ref": "#/Execute"
     },
     {
       "$ref": "#/Response"
     },
     {
       "$ref": "#/Error"
-    },
-    {
-      "$ref": "#/Observe"
-    },
-    {
-      "$ref": "#/Notify"
     }
   ],
   "properties": {
-    "id": {
+    "mid": {
       "type": "integer"
     },
     "type": {
       "type": "string",
       "enum": [
         "read",
-        "write",
+        "execute",
         "response",
-        "error",
-        "observe",
-        "notify"
+        "error"
       ]
     },
-    "endpoint": {
+    "client": {
       "type": "string"
-    },
-    "resource": {
-      "type": [
-        "string",
-        "integer"
-      ]
     },
     "value": {}
   },
   "required": [
-    "id",
     "type"
   ],
   "additionalProperties": false,
   "dependencies": {
-    "resource": [
-      "endpoint"
-    ],
     "value": {
       "properties": {
         "type": {
           "enum": [
-            "write",
-            "response",
-            "error",
-            "observe",
-            "notify"
+            "execute"
           ]
         }
       }
     }
   },
   "Read": {
-    "description": "Read Message Schema",
+    "description": "ReadMessage Schema",
     "allOf": [
       {
         "$ref": "#"
@@ -87,8 +65,8 @@
       }
     ]
   },
-  "Write": {
-    "description": "Write Message Schema",
+  "Execute": {
+    "description": "ExecuteMessage Schema",
     "allOf": [
       {
         "$ref": "#"
@@ -97,7 +75,7 @@
         "properties": {
           "type": {
             "enum": [
-              "write"
+              "execute"
             ]
           }
         },
@@ -109,7 +87,7 @@
     ]
   },
   "Response": {
-    "description": "Response Message Schema",
+    "description": "ResponseMessage Schema",
     "allOf": [
       {
         "$ref": "#"
@@ -123,14 +101,13 @@
           }
         },
         "required": [
-          "type",
-          "value"
+          "type"
         ]
       }
     ]
   },
   "Error": {
-    "description": "Error Message Schema",
+    "description": "ErrorMessage Schema",
     "allOf": [
       {
         "$ref": "#"
@@ -144,55 +121,7 @@
           }
         },
         "required": [
-          "type",
-          "value"
-        ]
-      }
-    ]
-  },
-  "Observe": {
-    "description": "Observe Message Schema",
-    "allOf": [
-      {
-        "$ref": "#"
-      },
-      {
-        "properties": {
-          "type": {
-            "enum": [
-              "observe"
-            ]
-          },
-          "value": {
-            "type": "string",
-            "enum": [
-              "end"
-            ]
-          }
-        },
-        "required": [
           "type"
-        ]
-      }
-    ]
-  },
-  "Notify": {
-    "description": "Notify Message Schema",
-    "allOf": [
-      {
-        "$ref": "#"
-      },
-      {
-        "properties": {
-          "type": {
-            "enum": [
-              "notify"
-            ]
-          }
-        },
-        "required": [
-          "type",
-          "value"
         ]
       }
     ]
