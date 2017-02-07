@@ -100,6 +100,10 @@ public class Message {
         return new Message(mid, client, value, Type.response);
     }
 
+    public Message response(Object value) throws InvalidMessageException {
+        return new Message(mid, client, gson.toJsonTree(value), Type.response);
+    }
+
     public Message errorResponse(Exception value) throws InvalidMessageException {
         return new Message(mid, client, new JsonPrimitive(value.getLocalizedMessage()), Type.error);
     }

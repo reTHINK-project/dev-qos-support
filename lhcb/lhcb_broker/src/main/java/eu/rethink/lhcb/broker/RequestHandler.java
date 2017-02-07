@@ -30,9 +30,9 @@ import org.eclipse.leshan.server.client.Client;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
-import static eu.rethink.lhcb.utils.Utils.gson;
 import static eu.rethink.lhcb.utils.Utils.parseCMReadResponse;
 
 /**
@@ -61,7 +61,14 @@ public class RequestHandler {
         } else if (msg.getClient() == null) {
             LOG.debug("No Client provided -> Returning all clients");
             try {
-                cb.response(msg.response(gson.toJsonTree(server.getClientRegistry().allClients())));
+                Collection<Client> collection = server.getClientRegistry().allClients();
+                String[] endpoints = new String[collection.size()];
+                int i = 0;
+                for (Client client : collection) {
+                    endpoints[i++] = client.getEndpoint();
+                }
+                //cb.response(msg.response(gson.toJsonTree(server.getClientRegistry().allClients())));
+                cb.response(msg.response(endpoints));
             } catch (InvalidMessageException e) {
                 cb.error(e);
             }
