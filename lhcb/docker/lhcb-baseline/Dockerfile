@@ -2,10 +2,10 @@ FROM rethink/testbed-baseline
 
 MAINTAINER robert.ende@fokus.fraunhofer.de
 
-RUN apt-get update -y && apt-get install -y git maven default-jdk
+RUN apt-get update -y && apt-get install -y git maven openjdk-8-jdk
 
 RUN cd /opt/reTHINK/ && git clone https://github.com/reTHINK-project/dev-qos-support
 
-RUN cd /opt/reTHINK/dev-qos-support/lhcb/ && mvn install && mvn clean
+RUN cd /opt/reTHINK/dev-qos-support/lhcb/ && mvn clean install
 
 ENTRYPOINT ["echo", "This image (rethink/lhcb-baseline) is not intended to be invoked directly.  If you derived your own image, you will need to specify a docker ENTRYPOINT."]
