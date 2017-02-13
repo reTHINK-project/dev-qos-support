@@ -2,7 +2,7 @@ FROM rethink/testbed-baseline
 
 MAINTAINER robert.ende@fokus.fraunhofer.de
 
-RUN apt-get update -y && apt-get install -y git maven openjdk-8-jdk
+RUN apt-get update -y && apt-get install -y git maven default-jdk
 
 RUN cd /opt/reTHINK/ && git clone https://github.com/reTHINK-project/dev-qos-support
 

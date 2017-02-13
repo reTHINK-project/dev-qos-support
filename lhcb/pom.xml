@@ -42,7 +42,7 @@
                 <configuration>
                     <encoding>UTF-8</encoding>
                     <source>1.8</source>
-                    <target>1.8</target>
+                    <target>1.7</target>
                     <debug>true</debug>
                     <optimize>true</optimize>
                     <!--<showDeprecations>true</showDeprecations>-->

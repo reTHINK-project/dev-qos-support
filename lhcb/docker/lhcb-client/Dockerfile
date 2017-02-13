@@ -6,7 +6,7 @@ MAINTAINER robert.ende@fokus.fraunhofer.de
 
 RUN cd /opt/reTHINK/dev-qos-support && git pull
 
-RUN cd /opt/reTHINK/dev-qos-support/lhcb/lhcb_client && mvn clean install
+RUN cd /opt/reTHINK/dev-qos-support/lhcb && mvn clean install
 
 RUN cd /opt/reTHINK/dev-qos-support/lhcb/lhcb_client/target && mv rethink-lhcb-client-*-jar-with-dependencies.jar rethink-lhcb-client-jar-with-dependencies.jar
 
