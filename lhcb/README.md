@@ -79,6 +79,11 @@ option                      | description
 
 ## Using the HTTP & WebSocket interfaces
 
+The HTTP & WebSocket interfaces shall be used to get the current status of an LHCB Client.
+Since their implementation is based on LwM2M, the provided resources are based on the LwM2M ConnectivityMonitor instance.
+
+A description of the values per resource ID is provided [here](./LWM2M-Connectivity-Monitoring-Object.md)
+
 ### Broker HTTP
 The LHCB Broker HTTP interface listens on port 8080 for `http` and 8443 for `https` by default.
 You can access information about a LHCB client that is connected to that Broker using the following URL path, and providing the necessary information for the request:
