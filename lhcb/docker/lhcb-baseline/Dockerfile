@@ -10,6 +10,10 @@ RUN DEBIAN_FRONTEND=noninteractive add-apt-repository ppa:openjdk-r/ppa
 
 RUN apt-get update -y && apt-get install -y git maven openjdk-8-jdk
 
+RUN apt-get remove -y openjdk-7-jre openjdk-7-jdk
+
+RUN update-java-alternatives -s java-1.8.0-openjdk-amd64
+
 RUN cd /opt/reTHINK/ && git clone https://github.com/reTHINK-project/dev-qos-support
 
 RUN cd /opt/reTHINK/dev-qos-support/lhcb/ && mvn clean install
