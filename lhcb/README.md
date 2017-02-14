@@ -18,11 +18,11 @@ Docker images are provided online, their respective names are:
 To launch the docker images, you can use the following commands:
 ```
 docker run -it rethink/lhcb-broker
-docker run -it rethink/lhcb-database
+docker run -it rethink/lhcb-client
 ```
-Starting the images this way, you can also use the supported launch options declared below. For example, in order to have the LHCB Client connect to a specific IP and setup a WebSocket, you can use the following command:
+Starting the images this way, you can also use the supported launch options declared below. For example, in order to have the LHCB Client connect to a specific IP, you can use the following command:
 ```
-docker run -it rethink/lhcb-database -h 172.17.0.2 -ws
+docker run -it rethink/lhcb-client -h 172.17.0.2
 ```
 Please note that the LHCB Client by default tries to connect to a LHCB Broker using `localhost`. Therefore, when running the docker image for the LHCB CLient, you have to specify the IP/host of the LHCB Broker, unless you use the docker specific `--net=host` option (for both LHCB Broker and LHCB Client).
 
@@ -75,7 +75,6 @@ option                      | description
 -port, -p                   | set LHCB Broker CoAP Port
 -dummy, -d                  | provide dummy data instead of real data
 -name, -n                   | set client (endpoint) name
--websocket, -ws             | setup WebSocketServer of ConnectivityMonitor
 
 ## Using the HTTP & WebSocket interfaces
 
