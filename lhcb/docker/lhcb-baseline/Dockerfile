@@ -2,7 +2,13 @@ FROM rethink/testbed-baseline
 
 MAINTAINER robert.ende@fokus.fraunhofer.de
 
-RUN apt-get update -y && apt-get install -y git maven default-jdk
+#RUN apt-get -y install software-properties-common
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install software-properties-common
+
+#RUN add-apt-repository ppa:openjdk-r/ppa
+RUN DEBIAN_FRONTEND=noninteractive add-apt-repository ppa:openjdk-r/ppa
+
+RUN apt-get update -y && apt-get install -y git maven openjdk-8-jdk
 
 RUN cd /opt/reTHINK/ && git clone https://github.com/reTHINK-project/dev-qos-support
 
