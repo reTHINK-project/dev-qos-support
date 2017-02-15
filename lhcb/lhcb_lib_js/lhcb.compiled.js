@@ -344,4 +344,5 @@ var Logger = function () {
 window.LHCB = new LHCB();
 
 // export default LHCB;
-//# sourceMappingURL=lhcb.js.map
+
+//# sourceMappingURL=lhcb.compiled.js.map
