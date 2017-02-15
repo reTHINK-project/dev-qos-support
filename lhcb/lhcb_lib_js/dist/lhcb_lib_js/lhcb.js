@@ -48,42 +48,35 @@ var LHCB = function () {
 
 var LHCBBroker = function () {
     function LHCBBroker(host, port) {
+        var _this = this;
+
         _classCallCheck(this, LHCBBroker);
 
         this.l = new Logger(this);
         this.l.d("Creating new LHCB Broker from:", arguments);
         this.ws = new WebSocket("wss://" + host + ":" + port + "/ws");
+        this.ws.onopen = function () {
+            _this.l.d("WebSocket open");
+            _this.ready = true;
+        };
         this.l.d("Created WebSocket:", this.ws);
+        this.ready = false;
     }
 
     _createClass(LHCBBroker, [{
-        key: "read",
-        value: function read(name) {
-            var _this = this;
-
-            return new Promise(function (resolve) {
-                _this.l.d("Running 'read' Promise");
-
-                var request = { "type": "read", "client": name };
-                var jsonRequest = JSON.stringify(request);
-                _this.ws.onmessage = function (msg) {
-                    var response = JSON.parse(msg.data);
-                    _this.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
-                    resolve(response);
-                };
-                _this.l.d("Sending request:", jsonRequest);
-                _this.ws.send(jsonRequest);
-            });
+        key: "isReady",
+        value: function isReady() {
+            return this.ready;
         }
     }, {
-        key: "execute",
-        value: function execute(client, funcName, args) {
+        key: "read",
+        value: function read(name) {
             var _this2 = this;
 
             return new Promise(function (resolve) {
-                _this2.l.d("Running 'execute' Promise");
+                _this2.l.d("Running 'read' Promise");
 
-                var request = { "type": "execute", "client": client, "value": { "name": funcName, "args": args } };
+                var request = { "type": "read", "client": name };
                 var jsonRequest = JSON.stringify(request);
                 _this2.ws.onmessage = function (msg) {
                     var response = JSON.parse(msg.data);
@@ -92,6 +85,25 @@ var LHCBBroker = function () {
                 };
                 _this2.l.d("Sending request:", jsonRequest);
                 _this2.ws.send(jsonRequest);
+            });
+        }
+    }, {
+        key: "execute",
+        value: function execute(client, funcName, args) {
+            var _this3 = this;
+
+            return new Promise(function (resolve) {
+                _this3.l.d("Running 'execute' Promise");
+
+                var request = { "type": "execute", "client": client, "value": { "name": funcName, "args": args } };
+                var jsonRequest = JSON.stringify(request);
+                _this3.ws.onmessage = function (msg) {
+                    var response = JSON.parse(msg.data);
+                    _this3.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
+                    resolve(response);
+                };
+                _this3.l.d("Sending request:", jsonRequest);
+                _this3.ws.send(jsonRequest);
             });
         }
     }, {
@@ -106,7 +118,7 @@ var LHCBBroker = function () {
 
 var LHCBClient = function () {
     function LHCBClient(broker, name) {
-        var _this3 = this;
+        var _this4 = this;
 
         _classCallCheck(this, LHCBClient);
 
@@ -116,7 +128,7 @@ var LHCBClient = function () {
         this.ready = false;
         if (!broker || !name) {
             (function () {
-                _this3.l.d("Unspecified Broker or Name, trying to connect locally AND get BrokerInfo");
+                _this4.l.d("Unspecified Broker or Name, trying to connect locally AND get BrokerInfo");
                 var ws = new WebSocket("wss://localhost:9443/ws");
 
                 var request = {
@@ -127,19 +139,19 @@ var LHCBClient = function () {
                 var jsonRequest = JSON.stringify(request);
                 ws.onmessage = function (msg) {
                     var response = JSON.parse(msg.data);
-                    _this3.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
+                    _this4.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
                     if (response.type == "response") {
-                        _this3.name = response.value.name;
-                        _this3.broker = new LHCBBroker(response.value.host, response.value.port);
-                        _this3.ready = true;
+                        _this4.name = response.value.name;
+                        _this4.broker = new LHCBBroker(response.value.host, response.value.port);
+                        _this4.ready = true;
                     }
                 };
                 ws.onopen = function () {
-                    _this3.l.d("WebSocket open");
-                    _this3.l.d("Sending request:", jsonRequest);
+                    _this4.l.d("WebSocket open");
+                    _this4.l.d("Sending request:", jsonRequest);
                     ws.send(jsonRequest);
                 };
-                _this3.localWs = ws;
+                _this4.localWs = ws;
             })();
         } else {
             this.l.d("Broker and Name specified, communicating exclusively through Broker");
@@ -157,22 +169,22 @@ var LHCBClient = function () {
     }, {
         key: "read",
         value: function read() {
-            var _this4 = this;
+            var _this5 = this;
 
             if (this.localWs && this.localWs.readyState == WebSocket.OPEN) {
                 this.l.d("Local WebSocket is open, reading locally...");
                 return new Promise(function (resolve) {
-                    _this4.l.d("Running 'read' Promise");
+                    _this5.l.d("Running 'read' Promise");
 
                     var request = { "type": "read" };
                     var jsonRequest = JSON.stringify(request);
-                    _this4.localWs.onmessage = function (msg) {
+                    _this5.localWs.onmessage = function (msg) {
                         var response = JSON.parse(msg.data);
-                        _this4.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
+                        _this5.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
                         resolve(response);
                     };
-                    _this4.l.d("Sending request:", jsonRequest);
-                    _this4.localWs.send(jsonRequest);
+                    _this5.l.d("Sending request:", jsonRequest);
+                    _this5.localWs.send(jsonRequest);
                 });
             } else {
                 this.l.d("No local WebSocket connection to LHCB Client -> Reading via Broker...");
@@ -182,22 +194,22 @@ var LHCBClient = function () {
     }, {
         key: "execute",
         value: function execute(funcName, args) {
-            var _this5 = this;
+            var _this6 = this;
 
             if (this.localWs && this.localWs.readyState == WebSocket.OPEN) {
                 this.l.d("Local WebSocket is open, executing locally...");
                 return new Promise(function (resolve) {
-                    _this5.l.d("Running 'execute' Promise");
+                    _this6.l.d("Running 'execute' Promise");
 
                     var request = { "type": "execute", "value": { "name": funcName, "args": args } };
                     var jsonRequest = JSON.stringify(request);
-                    _this5.localWs.onmessage = function (msg) {
+                    _this6.localWs.onmessage = function (msg) {
                         var response = JSON.parse(msg.data);
-                        _this5.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
+                        _this6.l.d("Got response for " + jsonRequest + ":", JSON.stringify(response, null, 2));
                         resolve(response);
                     };
-                    _this5.l.d("Sending request:", jsonRequest);
-                    _this5.localWs.send(jsonRequest);
+                    _this6.l.d("Sending request:", jsonRequest);
+                    _this6.localWs.send(jsonRequest);
                 });
             } else {
                 this.l.d("No local WebSocket connection to LHCB Client -> Executing via Broker...");
@@ -226,7 +238,7 @@ var LHCBClient = function () {
 
 var Logger = function () {
     function Logger(obj) {
-        var _this6 = this;
+        var _this7 = this;
 
         _classCallCheck(this, Logger);
 
@@ -244,7 +256,7 @@ var Logger = function () {
                 // Supposedly you'd like to skip constructor
                 if (!(method instanceof Function) || method === obj) return "continue";
                 // console.log("injecting logger into", name);
-                var self = _this6;
+                var self = _this7;
                 obj[name] = function () {
                     console.debug(self.name + "." + name + "():", arguments);
                     return method.apply(obj, arguments);

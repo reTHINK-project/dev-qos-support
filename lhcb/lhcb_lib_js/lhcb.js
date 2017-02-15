@@ -37,7 +37,16 @@ class LHCBBroker {
         this.l = new Logger(this);
         this.l.d("Creating new LHCB Broker from:", arguments);
         this.ws = new WebSocket("wss://" + host + ":" + port + "/ws");
+        this.ws.onopen = () => {
+            this.l.d("WebSocket open");
+            this.ready = true;
+        };
         this.l.d("Created WebSocket:", this.ws);
+        this.ready = false;
+    }
+
+    isReady() {
+        return this.ready;
     }
 
     read(name) {

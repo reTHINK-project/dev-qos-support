@@ -1,0 +1,1 @@
+../../../../../lhcb_lib_js/dist/lhcb_lib_js/lhcb.js

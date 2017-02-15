@@ -20,6 +20,7 @@
 <head>
     <title>Last Hop Connectivity Broker - GUI</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="lhcb.js"></script>
     <script src="angular.js"></script>
 </head>
 <style>
@@ -32,139 +33,69 @@
 <h1>Last Hop Connectivity Broker - GUI</h1>
 
 <p>Please select one of the available clients:
-    <select name="singleSelect" ng-change="getClientInfo(client.endpoint)" ng-model="client"
-            ng-options="client.endpoint for client in clients"></select>
+    <select name="singleSelect" ng-change="getClientInfo(clientName)" ng-model="clientName"
+            ng-options="clientName for clientName in clients"></select>
 </p>
 
 <div>
-    <div ng-show="client"
+    <div ng-show="clientName"
          style="font-family: monospace; background-color: lightgrey; display: inline-block; border: 2px solid; padding: 30px">
-        <h2>Connectivity Monitoring: {{client.endpoint}}
-            <button ng-click="getClientInfo(client.endpoint)">GET</button>
+        <h2>Connectivity Monitoring: {{clientName}}
+            <button ng-click="getClientInfo(clientName)">GET</button>
         </h2>
-        <table border="1" ng-show="clientInfo">
-            <tr ng-show="clientInfo[0]">
-                <td>Network Bearer</td>
-                <td>
-                    <pre>{{clientInfo[0].value}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[1]">
-                <td>Available Network Bearer</td>
-                <td>
-                    <pre>{{clientInfo[1].values | json}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[2]">
-                <td>Radio Signal Strength</td>
-                <td>
-                    <pre>{{clientInfo[2].value}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[3]">
-                <td>Link Quality</td>
-                <td>
-                    <pre>{{clientInfo[3].value}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[4]">
-                <td>IP Addresses</td>
-                <td>
-                    <pre>{{clientInfo[4].values | json}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[5]">
-                <td>Router IP Address</td>
-                <td>
-                    <pre>{{clientInfo[5].values | json}}</pre>
-                </td>
-            </tr>
-            <tr ng-show="clientInfo[6]">
-                <td>Link Utilization</td>
-                <td>
-                    <pre>{{clientInfo[6].value}}</pre>
-                </td>
-            </tr>
-        </table>
-        <p>
-            <button ng-click="showRawInfo = !showRawInfo" ng-init="showRawInfo = false">Show/Hide raw client info
-            </button>
-        <pre ng-show="showRawInfo">{{clientInfo | json}}</pre>
-        </p>
+        <pre>{{client | json}}</pre>
+
     </div>
 </div>
 </body>
 <script>
     var app = angular.module("lhcbgui", []);
     app.controller("lhcbCtrl", function ($scope) {
-        var makeRequest = function (type, value, client, cb) {
-            console.log("makeRequest:", arguments);
-            var http = new XMLHttpRequest();
-            http.open("POST", "/.well-known");
-            http.onreadystatechange = function (event) {
+        var lhcb = window.LHCB;
 
-                var target = event.currentTarget;
-                if (target.readyState === 4) {
-                    if (target.status === 200) {
-                        console.log("makeRequest ->", target.responseText);
-                        cb(target.responseText);
-                    } else {
-                        console.log("Something went wrong because of response code: 200 != ", xhr.status);
-                        console.log(target);
-                    }
+        // get broker based on url of this website
+        var broker = lhcb.getBroker(location.hostname, location.port ? location.port : "443");
+
+//        $scope.clients = [];
+        $scope.broker = broker;
+
+        var intervalId;
+        var tries = 0;
+
+        // use interval to check when broker is ready
+        // TODO better solution: broker could have static init function that returns promise that fulfills when ready.
+        intervalId = setInterval(() => {
+            if (broker.isReady()) {
+                $scope.broker.read().then((msg) => {
+                    $scope.clients = msg.value;
+                    console.log("initial clients list:", $scope.clients);
+                    $scope.$applyAsync();
+                    setInterval(() => {
+                        $scope.broker.read().then((msg) => {
+                            $scope.clients = msg.value;
+                            console.log("updated clients list:", $scope.clients);
+                            $scope.$applyAsync();
+                        });
+                    }, 1000);
+                });
+                clearInterval(intervalId);
+            } else {
+                if (tries++ >= 100) {
+                    console.log("Broker not getting ready!");
+                    clearInterval(intervalId);
                 }
-            };
-            var msg = {};
-            msg.type = type;
-            msg.value = value;
-            msg.client = client;
-            http.send(JSON.stringify(msg));
-        };
+            }
+        }, 100);
 
-        var getClientList = function () {
-            console.log("getClientList");
-            var callback = function (result) {
-                var json = JSON.parse(result);
-                $scope.clients = json.value;
-                if ($scope.client == undefined && $scope.clients != undefined && $scope.clients.length > 0) {
-                    $scope.client = $scope.clients[0];
-                    getClientInfo($scope.client.endpoint);
-                }
-                $scope.$apply();
-            };
-            makeRequest("read", undefined, undefined, callback);
-        };
-//
-//        var observeClientInfo = function () {
-//            console.log("observeClientInfo");
-//            var callback = function (result) {
-//                var json = JSON.parse(result);
-//                $scope.clients = json.value;
-//                if ($scope.client == undefined && $scope.clients != undefined && $scope.clients.length > 0) {
-//                    $scope.client = $scope.clients[0];
-//                    getClientInfo($scope.client.endpoint);
-//                }
-//                $scope.$apply();
-//            };
-//            makeRequest("observe", undefined, undefined, callback);
-//        }
-
-        var getClientInfo = function (clientName) {
-            console.log("getClientInfo", arguments);
-            var callback = function (result) {
-                var json = JSON.parse(result);
-                $scope.clientInfo = json.value;
-                console.log("clientInfo:", json.value);
-                $scope.$apply();
-            };
-            makeRequest("read", undefined, clientName, callback);
-        };
-
-        $scope.getClientList = getClientList;
-        $scope.getClientInfo = getClientInfo;
+        $scope.getClientInfo = (name) => {
+            $scope.broker.read(name).then((msg) => {
+                $scope.client = msg.value;
+                console.log("read client:", $scope.client);
+                $scope.$applyAsync();
+            });
+        }
 
 
-        getClientList();
     });
 </script>
 </html>
